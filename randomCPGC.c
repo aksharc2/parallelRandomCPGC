@@ -5,6 +5,29 @@
 #include <stdbool.h>
 #include <string.h>
 
+
+int get_k_hat(int graph_nodes, int m_hat, int delta) {
+	int k_hat;
+    float de = (2 * pow((double)graph_nodes, 2)) / m_hat;
+    float nu = delta * log2((double)graph_nodes);
+    k_hat = floor((double)nu / (log2((double)de)));
+	return k_hat;
+}
+
+// int saveCliquesEdges(int q, int* W_Neighbours, int* W_Clique) {
+    // int cliqueEdges = 0;
+    // for (int i = 0; i < clique_u_size; i++) {
+        // fprintf(tempFile, "%d %d\n", W_Neighbours[i], q);
+		// cliqueEdges++;
+    // }
+    // for (int j = 0; j < clique_v_size; j++) {
+        // fprintf(tempFile, "%d %d\n", q, W_Clique[j]);
+		// cliqueEdges++;
+    // }
+	// return cliqueEdges;
+// }
+
+
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
 
@@ -12,7 +35,7 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     int graphNodes = 32;
 	int k_hat = 3;
-	
+	int delta = 1;
     int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
 
     // Get my rank
@@ -22,13 +45,10 @@ int main(int argc, char* argv[]) {
     // Create the window for a 10x10 matrix
     const int ROWS = graphNodes;
     const int COLS = graphNodes/comm_size;
-	int termination = -99;
     bool* adjMatrix_buffer;
-	// int* whileTerminator_buffer;
     MPI_Win adjMatrix_window;
     MPI_Win_allocate_shared(arraySize * sizeof(bool), sizeof(bool), MPI_INFO_NULL, MPI_COMM_WORLD, &adjMatrix_buffer, &adjMatrix_window);
 	// MPI_Win_allocate_shared(1 * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &whileTerminator_buffer, &whileTerminator);
-   
 	// *whileTerminator_buffer = 1;
     // Initialize the shared matrix
     // for (int i = 0; i < arraySize; i++) {       
@@ -41,6 +61,7 @@ int main(int argc, char* argv[]) {
 	if (my_rank == 0){
 		int lp, mp , rp, edges;
 		int m_hat = 0;
+		
 		int adjOffset = 1;
 		FILE *file = fopen(filename, "r");
 		printf("started reading. \n");
@@ -73,14 +94,13 @@ int main(int argc, char* argv[]) {
 			fscanf(file, "%d %d \n", &row, &col); // , &temp
 			adjMatrix_buffer[ ((col - adjOffset) * graphNodes) + (row - adjOffset) ] = 1;
 			m_hat++;
-			
 		}
 		printf("Edges: %d\n",m_hat);
 		fclose(file);
 	// }
         
 	// if (my_rank == 0) {
-	    printf("The array size is %d.\n", arraySize);
+	    // printf("The array size is %d.\n", arraySize);
 		
 		
 		// Print the initial matrix
@@ -90,7 +110,7 @@ int main(int argc, char* argv[]) {
 				// printf("\n");
 		// }
 		// printf("\n");
-		// printf("Total edges : %d\n", m_hat);
+		printf("Total edges : %d\n", m_hat);
 		
 // Algorithm Implementation starts here
 
@@ -114,7 +134,7 @@ int main(int argc, char* argv[]) {
 					}					
 					MPI_Send(&send_buf, sendSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
 					if (s + k_hat > graphNodes && s != graphNodes){
-						printf("				MPI process %d finds common neighbour for graphNodes - s vertices.\n", my_rank);
+						// printf("				MPI process %d finds common neighbour for graphNodes - s vertices.\n", my_rank);
 						R = r + 1;
 						int vertices = graphNodes - s;
 						int v = s;
@@ -138,7 +158,7 @@ int main(int argc, char* argv[]) {
 									// for(int v = 0; v < vertices; v++)
 										// printf("v_%d, ", recv_buf[v]);
 								// printf(")\n");
-								edgeRemoved++;
+								edgeRemoved += vertices;
 							}
 						}
 						free(targetIdx);
@@ -158,10 +178,10 @@ int main(int argc, char* argv[]) {
 					printf("Edges removed by processor %d: %d \n", r, edgesRemoved[r]);
 				}
 				printf("\n");
-				printf("Total edges : %d\n", m_hat);
+				printf("remaining edges : %d\n", m_hat);
 			}
 			// calculate k_hat
-			printf("Total edges : %d\n", m_hat);
+			printf("remaining edges : %d\n", m_hat);
 			k_hat = 1;
 			
 		}
@@ -186,10 +206,10 @@ int main(int argc, char* argv[]) {
 			printf("MPI process %d finding common neighbours for k_hat %d vertices.\n", my_rank, k_hat);
 			if (k_hat < 2)
 				break;
-			printf("[MPI process %d]----------- received vertex (", my_rank);
-			for(int v = 1; v <= k_hat; v++)
-				printf("v_%d, ", recv_buf[v]);
-			printf(")\n");
+			// printf("[MPI process %d]----------- received vertex (", my_rank);
+			// for(int v = 1; v <= k_hat; v++)
+				// printf("v_%d, ", recv_buf[v]);
+			// printf(")\n");
 			int* targetIdx = (int*)malloc(k_hat * sizeof(int));			
 			for(int k = 0; k < k_hat; k++){
 				received = recv_buf[k + 1];
@@ -207,7 +227,7 @@ int main(int argc, char* argv[]) {
 						// for(int v = 1; v <= k_hat; v++)
 							// printf("v_%d, ", recv_buf[v]);
 					// printf(")\n");
-					edgeRemoved++;
+					edgeRemoved += k_hat;
 				}
 			}
 			MPI_Isend(&edgeRemoved, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
