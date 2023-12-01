@@ -3,8 +3,22 @@
 #include <mpi.h>
 #include <math.h>
 #include <stdbool.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <string.h>
 
+void createFolder(const char* folderName, int rank) {
+    // Check if the folder exists, create it if not
+    struct stat st;
+    if (stat(folderName, &st) == -1) {
+        if (rank == 0) {
+            if (mkdir(folderName, 0777) != 0) {
+                perror("Error creating the folder");
+                MPI_Abort(MPI_COMM_WORLD, 1); // Terminate MPI
+            }
+        }
+    }
+}
 
 int get_k_hat(int graph_nodes, int m_hat, int delta) {
 	int k_hat;
@@ -120,20 +134,23 @@ int main(int argc, char* argv[]) {
 		for ( int r = 1; r < comm_size; r++){
 			MPI_Isend(&k_hat, 1, MPI_INT, r, 0, MPI_COMM_WORLD, &sRequest);
 		}
-		int send_buf[k_hat + 1]; // = (int*)malloc((k_hat + 1) * sizeof(int));
+		int send_buf[k_hat + 2]; // = (int*)malloc((k_hat + 1) * sizeof(int));
+		int q = graphNodes;
 		while (k_hat > 1) {
 			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);
 			int s = 0 ;	
 			send_buf[0] = k_hat;
 			int R = comm_size;
-			int sendSize = k_hat + 1;
+			int sendSize = k_hat + 2;
 			while( s < graphNodes){
 				int edgeRemoved = 0;
 				for ( int r = 1; r < comm_size; r++){
-					for (int k = 1; k <= k_hat; k++){
+					send_buf[1] = q;
+					q++;
+					for (int k = 2; k <= k_hat + 1; k++){
 						// int randomVertex = rand() % graphNodes;	
 						send_buf[k] = s;
-						// printf("				MPI process %d sends value %d to processor %d.\n", my_rank, s, r);
+						printf("				MPI process %d sends value %d to processor %d.\n", my_rank, s, r);
 						s++;
 					}					
 					MPI_Send(&send_buf, sendSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
@@ -144,9 +161,9 @@ int main(int argc, char* argv[]) {
 						int v = s;
 						s = graphNodes;
 						int* targetIdx = (int*)malloc(vertices * sizeof(int));
-						int* recv_buf = (int*)malloc(vertices * sizeof(int));						
+						int neighboursIdx = 0;
+						int* neighbours = (int*)malloc(graphNodes * sizeof(int));	
 						for(int k = 0; k < vertices; k++){
-							recv_buf[k] = v;
 							int p = (int) floor((v * graphNodes)/arraySize);
 							int idx = (v * graphNodes) % arraySize;
 							targetIdx[k] = (p - my_rank) * arraySize + idx;
@@ -158,14 +175,18 @@ int main(int argc, char* argv[]) {
 								temp = temp * adjMatrix_buffer[targetIdx[k] + i];
 							}
 							if (temp){
+								neighbours[neighboursIdx] = i;	
 								// printf("[MPI process %d]----------- vertex u_%d has a common edge with (", my_rank, i);
 									// for(int v = 0; v < vertices; v++)
 										// printf("v_%d, ", recv_buf[v]);
 								// printf(")\n");
 								edgeRemoved += vertices;
+								neighboursIdx++;
 							}
 						}
 						free(targetIdx);
+						free(neighbours);
+						q++;
 						break;
 					}
 					// MPI_Wait(&sRequest, MPI_STATUS_IGNORE);
@@ -205,41 +226,56 @@ int main(int argc, char* argv[]) {
 		
 		int k_hat_buffer;
 		MPI_Recv(&k_hat_buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		int recv_buf[k_hat_buffer + 1]; // = (int*)malloc((k_hat + 1) * sizeof(int));
+		int recv_buf[k_hat_buffer + 2]; // = (int*)malloc((k_hat + 1) * sizeof(int));
 		while(1){
 			int edgeRemoved = 0;
 			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);				
-			MPI_Recv(&recv_buf, (k_hat_buffer + 1), MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(&recv_buf, 5, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			int k_hat = recv_buf[0];
+			int Q = recv_buf[1];
 			printf("MPI process %d finding common neighbours for k_hat %d vertices.\n", my_rank, k_hat);
 			if (k_hat < 2)
 				break;
-			// printf("[MPI process %d]----------- received vertex (", my_rank);
-			// for(int v = 1; v <= k_hat; v++)
-				// printf("v_%d, ", recv_buf[v]);
-			// printf(")\n");
-			int* targetIdx = (int*)malloc(k_hat * sizeof(int));			
-			for(int k = 0; k < k_hat; k++){
-				received = recv_buf[k + 1];
+			printf("[MPI process %d]----------- received vertex (", my_rank);
+			for(int v = 0; v <= k_hat + 1; v++)
+				printf("%d, ", recv_buf[v]);
+			printf(")\n");
+			int* targetIdx = (int*)malloc(k_hat * sizeof(int));	
+			int* neighbours = (int*)malloc(graphNodes * sizeof(int));				
+			for(int k = 0; k < k_hat + 2; k++){
+				received = recv_buf[k + 2];
 				int p = (int) floor((received * graphNodes)/arraySize);
 				int idx = (received * graphNodes) % arraySize;
 				targetIdx[k] = (p - my_rank) * arraySize + idx;
 			}
+			int neighboursIdx = 0;
 			for(int i = 0; i < graphNodes; i++){
 				int temp = 1;
 				for(int k = 0; k < k_hat; k++){
 					temp = temp * adjMatrix_buffer[targetIdx[k] + i];
 				}
 				if (temp){
-					// printf("[MPI process %d]----------- vertex u_%d has a common edge with (", my_rank, i);
-						// for(int v = 1; v <= k_hat; v++)
-							// printf("v_%d, ", recv_buf[v]);
-					// printf(")\n");
+					neighbours[neighboursIdx] = i;					
+					printf("[MPI process %d]----------- vertex u_%d has a common edge with (", my_rank, neighbours[neighboursIdx]);
+						for(int v = 2; v <= k_hat+1; v++)
+							printf("v_%d, ", recv_buf[v]);
+					printf(")\n");
+					neighboursIdx++;
 					edgeRemoved += k_hat;
 				}
 			}
 			MPI_Isend(&edgeRemoved, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
+			
+			
+			
+			
+			
+			
+			
+			
+			
 			free(targetIdx);
+			free(neighbours);
 		}
 		// free(recv_buf);
 		printf("Processor %d terminating as (k_hat) < 2 \n", my_rank);
