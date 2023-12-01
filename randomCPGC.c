@@ -28,8 +28,8 @@ int get_k_hat(int graph_nodes, int m_hat, float delta) {
 }
 
 int main(int argc, char* argv[]) {
-	const char* folderName = "temp"; // Specify the folder name
-	const char* compressedGraphFolderName = "compressedGraph"; // Specify the folder name
+	const char* folderName = "temp3"; // Specify the folder name
+	const char* compressedGraphFolderName = "compressedGraph3"; // Specify the folder name
 	createFolder(folderName);
 	createFolder(compressedGraphFolderName);
     MPI_Init(&argc, &argv);
@@ -486,6 +486,7 @@ int main(int argc, char* argv[]) {
 			sprintf(f_name, "%s/p_%d.mtx", folderName,p);
 			remove(f_name);
 		}
+		//system("rm -r temp");
 		mergeFilesTime += (MPI_Wtime() - mergeFilesStart);
 		double end = MPI_Wtime();
 		//printf("Processor [%d] file merging exe time: %lf s\n", my_rank, mergeFilesTime);
