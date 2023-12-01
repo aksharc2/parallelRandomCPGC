@@ -34,7 +34,6 @@ int main(int argc, char* argv[]) {
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     int graphNodes = 32;
-	int k_hat = 3;
 	int delta = 1;
     int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
 
@@ -115,14 +114,19 @@ int main(int argc, char* argv[]) {
 // Algorithm Implementation starts here
 
 		int *edgesRemoved = (int*)malloc((comm_size) * sizeof(int));
-		MPI_Request gRequest, sRequest;
-		int sendSize = k_hat +1 ;
-		int send_buf[5];// = (int*)malloc((k_hat + 1) * sizeof(int));
+		MPI_Request gRequest, sRequest;		
+		int k_hat = get_k_hat(graphNodes, m_hat, delta);
+		printf("k_hat: %d\n", k_hat);
+		for ( int r = 1; r < comm_size; r++){
+			MPI_Isend(&k_hat, 1, MPI_INT, r, 0, MPI_COMM_WORLD, &sRequest);
+		}
+		int send_buf[k_hat + 1]; // = (int*)malloc((k_hat + 1) * sizeof(int));
 		while (k_hat > 1) {
 			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);
-			int s = 0 ;
+			int s = 0 ;	
 			send_buf[0] = k_hat;
 			int R = comm_size;
+			int sendSize = k_hat + 1;
 			while( s < graphNodes){
 				int edgeRemoved = 0;
 				for ( int r = 1; r < comm_size; r++){
@@ -179,30 +183,34 @@ int main(int argc, char* argv[]) {
 				}
 				printf("\n");
 				printf("remaining edges : %d\n", m_hat);
+				
 			}
 			// calculate k_hat
 			printf("remaining edges : %d\n", m_hat);
-			k_hat = 1;
-			
+			k_hat = get_k_hat(graphNodes, m_hat, delta);	
+			printf("k_hat: %d\n", k_hat);
 		}
+		
 		printf("Sending terminating request\n");
 		send_buf[0] = k_hat;
 		for ( int r = 1; r < comm_size; r++){
 			MPI_Isend(&send_buf, k_hat, MPI_INT, r, 0, MPI_COMM_WORLD, &sRequest); // , &request					
 		}
+		
 		MPI_Wait(&sRequest, MPI_STATUS_IGNORE);
-		// free(send_buf);
-		// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);
 	}
 	else{
 		MPI_Request request;
 		int received;
-		int recv_buf[5]; // = (int*)malloc((k_hat + 1) * sizeof(int));
+		
+		int k_hat_buffer;
+		MPI_Recv(&k_hat_buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		int recv_buf[k_hat_buffer + 1]; // = (int*)malloc((k_hat + 1) * sizeof(int));
 		while(1){
 			int edgeRemoved = 0;
 			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);				
-			MPI_Recv(&recv_buf, (k_hat+1), MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			k_hat = recv_buf[0];
+			MPI_Recv(&recv_buf, (k_hat_buffer + 1), MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			int k_hat = recv_buf[0];
 			printf("MPI process %d finding common neighbours for k_hat %d vertices.\n", my_rank, k_hat);
 			if (k_hat < 2)
 				break;
@@ -234,7 +242,7 @@ int main(int argc, char* argv[]) {
 			free(targetIdx);
 		}
 		// free(recv_buf);
-		printf("Processor %d terminating as (k_hat) %d < 2 \n", my_rank, k_hat);
+		printf("Processor %d terminating as (k_hat) < 2 \n", my_rank);
 	}
 
     MPI_Barrier(MPI_COMM_WORLD);
