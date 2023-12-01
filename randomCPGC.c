@@ -28,23 +28,28 @@ int get_k_hat(int graph_nodes, int m_hat, float delta) {
 }
 
 int main(int argc, char* argv[]) {
-	const char* folderName = "temporaryEdges"; // Specify the folder name
+	const char* folderName = "temp"; // Specify the folder name
+	const char* compressedGraphFolderName = "compressedGraph"; // Specify the folder name
 	createFolder(folderName);
-	
+	createFolder(compressedGraphFolderName);
     MPI_Init(&argc, &argv);
 	double start = MPI_Wtime();
-    
+    double saveCliqueStart, saveCliqueTime, mergeFilesStart, mergeFilesTime, readingTimeStart;
+	saveCliqueTime = mergeFilesTime = 0.0;
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     
-	float delta = atof(argv[3]);
+	const char* inputFilename = argv[1];
 	int graphNodes = atoi(argv[2]);
+	float delta = atof(argv[3]);
+	int density = atoi(argv[4]);
+	int instance = atoi(argv[5]);
 
     int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
     // Get my rank
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
-	const char* filename = argv[1];
+	
 	int edgesAddedToClique = 0;
 	int TotalCliqueEdges = 0;
 	int InitialEdges = 0;
@@ -56,20 +61,133 @@ int main(int argc, char* argv[]) {
     MPI_Win adjMatrix_window;
     MPI_Win_allocate_shared(arraySize * sizeof(bool), sizeof(bool), MPI_INFO_NULL, MPI_COMM_WORLD, &adjMatrix_buffer, &adjMatrix_window);
 	MPI_Barrier(MPI_COMM_WORLD);
-	
+	MPI_File readFile;
+    MPI_Offset filesize, chunksize;
+	int offset;
+    MPI_File_open(MPI_COMM_WORLD, inputFilename, MPI_MODE_RDONLY, MPI_INFO_NULL, &readFile);
+    MPI_File_get_size(readFile, &filesize);
+    chunksize = filesize / comm_size;
+	char *buffer; // store the block of file read by each processor.
+	int adjOffset = 1;
 	char f_name[100];
-	sprintf(f_name, "cliqueEdges_Processor_%d.mtx", my_rank);
-	const char* fileName = f_name; // = "output.txt";  // Specify the file name		
+	sprintf(f_name, "p_%d.mtx", my_rank);
+	const char* tempfileName = f_name; // = "output.txt";  // Specify the file name		
 	char filePath[256]; // Adjust the size as needed
-	snprintf(filePath, sizeof(filePath), "%s/%s", folderName, fileName);
+	snprintf(filePath, sizeof(filePath), "%s/%s", folderName, tempfileName);
 	FILE* tempFile = fopen(filePath, "a");
 	
-
-	// MPI_Barrier(MPI_COMM_WORLD);
+	// // // Reading the file in parallel
 	
+	if (my_rank == 0){
+		readingTimeStart = MPI_Wtime();
+		int lp, mp , rp, edges;
+		offset = 0;
+		buffer = (char *)malloc((chunksize) * sizeof(char));
+		MPI_File_read_at(readFile, offset, buffer, chunksize, MPI_BYTE, MPI_STATUS_IGNORE);
+		int i = 0;
+		int lastChar = buffer[chunksize - i];
+		while (lastChar !=  10 ) {
+			int lastChar = buffer[chunksize - i];
+			// printf("Character %d at idx %ld\n", lastChar, chunksize - i);
+			if (lastChar ==  10){
+				break;
+			}
+			i++;
+		}
+		offset = offset + chunksize - i;
+		// printf("chunksize is %ld\n", chunksize - i);
+		MPI_Send(&offset, 1, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
+		char *line = strtok(buffer, "\n");
+		int length = line ? line - buffer : 0;
+		while (line[0] ==  '%'){
+			line = strtok(NULL, "\n");
+		}
+		sscanf(line, "%d %d %d \n", &lp , &rp, &edges);
+		
+		if (rp == 0){
+			sscanf(line, "%d %d %d %d\n", &lp , &mp, &rp, &edges);
+		}
+		// printf("Process %d: %d %d %d\n", my_rank, lp, rp, edges);
+		InitialEdges = edges;
+		m_hat = edges;
+		line = strtok(NULL, "\n");
+		while (line != NULL && length <= chunksize - i) {
+			// Process the line as needed
+			int row, col;
+			sscanf(line, "%d %d \n", &row, &col); // , &temp
+			adjMatrix_buffer[ ((col - adjOffset) * graphNodes) + (row - adjOffset) ] = 1;
+			// printf("Process %d (%d): %d %d %d\n", my_rank, ((col - adjOffset) * graphNodes) + (row - adjOffset) , row, col, adjMatrix_buffer[((col - adjOffset) * graphNodes) + (row - adjOffset) ]);
+			line = strtok(NULL, "\n");
+			length = line ? line - buffer : 0;
+			// printf("Length: %d \n", length);
+		}
+		
+	}
+	else{
+		MPI_Recv(&offset, 1, MPI_INT, my_rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		// printf("Offset %d \n", offset);
+		// chunksize += (my_rank * chunksize) - offset;
+		if (my_rank == comm_size - 1) 
+			chunksize = filesize - offset;
+		buffer = (char *)malloc((chunksize) * sizeof(char));
+		MPI_File_read_at(readFile, offset, buffer, chunksize, MPI_BYTE, MPI_STATUS_IGNORE);
+		int i = 0;
+		int lastChar = buffer[chunksize - i];
+
+		while (lastChar !=  10 ){
+			int lastChar = buffer[chunksize - i];
+			// printf("Character %d at idx %ld\n", lastChar, chunksize - i);
+			if (lastChar ==  10){
+				break;
+			}
+			i++;
+		}
+		offset = offset + chunksize - i;
+		// printf("chunksize is %ld\n", chunksize - i);
+		if (my_rank != comm_size - 1){
+			MPI_Send(&offset, 1, MPI_INT, my_rank + 1, 0, MPI_COMM_WORLD);
+			// printf("Processor [%d] sending to %d", my_rank, my_rank+1);
+		}
+		char *line = strtok(buffer, "\n");
+		int length = line ? line - buffer : 0;
+		while (line != NULL && length <= chunksize - i) {
+			int row, col;
+			sscanf(line, "%d %d \n", &row, &col); // , &temp
+			int pos = ((col - adjOffset) * graphNodes) + (row - adjOffset);
+			int p = (int) floor(pos/arraySize);
+			int idx = pos % arraySize;
+			int relIdx = (p - my_rank) * arraySize + idx;
+			adjMatrix_buffer[relIdx] = 1;
+			// printf("Process %d (%d): %d %d %d\n", my_rank, relIdx, row, col, adjMatrix_buffer[relIdx]);
+			line = strtok(NULL, "\n");
+			length = line ? line - buffer : 0;
+			// printf("Length: %d \n", length);
+		}
+		
+	}
+	
+
+
+	MPI_Barrier(MPI_COMM_WORLD);
+	if (my_rank == 0){
+		double readingTimeEnd = MPI_Wtime() - readingTimeStart;
+		printf("Processor [%d] file read time: %lf s\n", my_rank, readingTimeEnd);
+	}
+	// if(my_rank == 0){
+		// for(int i = 1; i <= graphNodes*graphNodes; i++){
+			// printf("(%d) %d ",i-1, adjMatrix_buffer[i-1]);
+			// if (i % graphNodes == 0)
+				// printf("\n");
+		// }
+	// }
+	// printf("\n");
+	
+	MPI_File_close(&readFile);
+	MPI_Barrier(MPI_COMM_WORLD);
 	// Initilizing the adjMatrix
 	if (my_rank == 0){
-		//printf("array size: %d \n", arraySize);
+/*
+		
 		int lp, mp , rp, edges;
 		
 		
@@ -112,10 +230,10 @@ int main(int argc, char* argv[]) {
 			adjMatrix_buffer[ ((col - adjOffset) * graphNodes) + (row - adjOffset) ] = 1;
 			m_hat++;
 		}
-		InitialEdges = m_hat;
+		
 		//printf("Initial edges: %d\n",m_hat);
 		fclose(file);
-
+*/
 		int* S  = (int*)malloc(graphNodes * sizeof(int));
 		
 		// char f_name[100];
@@ -205,6 +323,7 @@ int main(int argc, char* argv[]) {
 								}
 							}					
 						}
+						saveCliqueStart = MPI_Wtime();
 						for(int i = 0; i < neighboursIdx; i++){
 							fprintf(tempFile, "%d %d\n", neighbours[i], q);
 							edgesAddedToClique++;
@@ -214,6 +333,7 @@ int main(int argc, char* argv[]) {
 							edgesAddedToClique++;
 						}
 						// fclose(tempFile);
+						saveCliqueTime += (MPI_Wtime() - saveCliqueStart);
 						free(targetIdx);
 						free(neighbours);
 						q++;
@@ -306,7 +426,7 @@ int main(int argc, char* argv[]) {
 			}
 			MPI_Send(&edgeRemoved, 1, MPI_INT, 0, 0, MPI_COMM_WORLD); // , &request
 			//printf("processor %d edges removed: %d\n", my_rank, edgeRemoved);
-			
+			saveCliqueStart = MPI_Wtime();
 			for(int i = 0; i < neighboursIdx; i++){
 				fprintf(tempFile, "%d %d\n", neighbours[i], Q);
 				edgesAddedToClique++;
@@ -315,7 +435,7 @@ int main(int argc, char* argv[]) {
 				fprintf(tempFile, "%d %d\n", Q, recv_buf[v + 2]);			
 				edgesAddedToClique++;
 			}
-			
+			saveCliqueTime += (MPI_Wtime() - saveCliqueStart);
 			free(targetIdx);
 			free(neighbours);
 		}
@@ -344,18 +464,58 @@ int main(int argc, char* argv[]) {
 	//printf("[MPI process %d] adjMatrix_window destroyed.\n", my_rank);
     
 	// MPI_Win_free(&whileTerminator);
-	if (my_rank == 0){
-		double end = MPI_Wtime();
-		//printf("Time elapsed during the job: %.2fs.\n", end - start);
-		//printf("Compression ratio: %f \n", (float) InitialEdges/(float) (TotalCliqueEdges + m_hat));
-		printf("%d, %f, %f, %.4f, %d\n", graphNodes, delta, (float) InitialEdges/(float) (TotalCliqueEdges + m_hat), end - start, comm_size);
-	}
+	// if (my_rank == 0){
+		// double end = MPI_Wtime();
+		// printf("Time elapsed during the job: %.2fs.\n", end - start);
+		// printf("Compression ratio: %f \n", (float) InitialEdges/(float) (TotalCliqueEdges + m_hat));
+		// printf("%d, %.1f, %f, %.4f, %d\n", graphNodes, delta, (float) InitialEdges/(float) (TotalCliqueEdges + m_hat), end - start, comm_size);
+	// }
 
 	fclose(tempFile);
 	//printf("[MPI process %d] temp file destroyed.\n", my_rank);
 	// MPI_Barrier(MPI_COMM_WORLD);
-
+	
+	
+	if (my_rank == 0){
+		mergeFilesStart = MPI_Wtime();
+		char f_name[100];
+		char compressedFileName[256];
+		char command[2400] = "cat "; // Adjust the size as needed
+		sprintf(compressedFileName, "%s/compressed_graph_%d_%d_%d_%.1f.mtx", compressedGraphFolderName, graphNodes, density, instance, delta);
+		FILE* outputFile = fopen(compressedFileName, "w");
+		fprintf(outputFile, "%%MatrixMarket matrix coordinate pattern general\n");
+		fprintf(outputFile, "%% Resulted compressed graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
+		fprintf(outputFile, "%d %d %d\n", graphNodes, graphNodes, TotalCliqueEdges + m_hat);
+		fclose(outputFile);
+		// strcat(command, "cat ");
+		// printf("%s \n", command);
+		// snprintf(command, sizeof(command), "cat ", f_name, compressedFileName);
+		for(int p = 0; p < comm_size; p++){
+			sprintf(f_name, "%s/p_%d.mtx", folderName,p);
+			strcat(command, f_name);
+			strcat(command, " ");
+			// snprintf(command, sizeof(command), "cat %s >> %s", f_name, compressedFileName);
+			// int returnCode = system(command);
+			// remove(f_name);
+		}
+		strcat(command, " >> ");
+		strcat(command, compressedFileName);
+		// printf("%s \n", command);
+		int returnCode = system(command);
+		double end = MPI_Wtime();
+		printf("%d, %.1f, %f, %.4f, %d\n", graphNodes, delta, (float) InitialEdges/(float) (TotalCliqueEdges + m_hat), end - start, comm_size);
+		for(int p = 0; p < comm_size; p++){
+			sprintf(f_name, "%s/p_%d.mtx", folderName,p);
+			remove(f_name);
+		}
+		mergeFilesTime += (MPI_Wtime() - mergeFilesStart);
+		printf("Processor [%d] file merging exe time: %lf s\n", my_rank, mergeFilesTime);
+	}
+	printf("Processor [%d] file write time: %lf s\n", my_rank, saveCliqueTime);
+	// double readingTimeStart = MPI_Wtime();
+	MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
+
     return 0;
 }
 
