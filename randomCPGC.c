@@ -9,22 +9,15 @@
 #include <dirent.h>
 #include <time.h>
 
-void createFolder(const char* folderName, int rank) {
+void createFolder(const char* folderName) {
     // Check if the folder exists, create it if not
     struct stat st;
     if (stat(folderName, &st) == -1) {
-        if (rank == 0) {
-            if (mkdir(folderName, 0777) != 0) {
-                perror("Error creating the folder");
-                MPI_Abort(MPI_COMM_WORLD, 1); // Terminate MPI
-            }
-        }
+		mkdir(folderName, 0777);
     }
 }
 
-
-
-int get_k_hat(int graph_nodes, int m_hat, int delta) {
+int get_k_hat(int graph_nodes, int m_hat, float delta) {
 	int k_hat;
     float de = (2 * pow((double)graph_nodes, 2)) / m_hat;
     float nu = delta * log2((double)graph_nodes);
@@ -33,6 +26,8 @@ int get_k_hat(int graph_nodes, int m_hat, int delta) {
 }
 
 int main(int argc, char* argv[]) {
+	const char* folderName = "temporaryEdges"; // Specify the folder name
+	createFolder(folderName);
 	
     MPI_Init(&argc, &argv);
 	double start = MPI_Wtime();
@@ -40,9 +35,9 @@ int main(int argc, char* argv[]) {
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
     
-	int delta = 1;
+	float delta = atof(argv[3]);
 	int graphNodes = atoi(argv[2]);
-	const char* folderName = "temporaryEdges"; // Specify the folder name
+
     int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
     // Get my rank
     int my_rank;
@@ -67,10 +62,11 @@ int main(int argc, char* argv[]) {
 	snprintf(filePath, sizeof(filePath), "%s/%s", folderName, fileName);
 	FILE* tempFile = fopen(filePath, "a");
 	
+
+	// MPI_Barrier(MPI_COMM_WORLD);
 	
 	// Initilizing the adjMatrix
 	if (my_rank == 0){
-		createFolder(folderName, my_rank);
 		printf("array size: %d \n", arraySize);
 		int lp, mp , rp, edges;
 		
@@ -101,7 +97,13 @@ int main(int argc, char* argv[]) {
 		// Parse the matrix size and number of non-zero values
 		sscanf(line, "%d %d %d \n", &lp , &rp, &edges);
 		printf("%d %d %d \n", lp, rp, edges);
-			
+		
+		if (rp == 0){
+			sscanf(line, "%d %d %d %d\n", &lp , &mp, &rp, &edges);
+			printf("Found right partition to be zero.\n");
+			printf("%d %d %d \n", lp, rp, edges);
+		}
+		
 		for (int i = 0; i < edges; i++) {
 			int row, col;
 			fscanf(file, "%d %d \n", &row, &col); // , &temp
@@ -307,8 +309,8 @@ int main(int argc, char* argv[]) {
 				fprintf(tempFile, "%d %d\n", neighbours[i], Q);
 				edgesAddedToClique++;
 			}
-			for(int v = 2; v <= k_hat+1; v++){
-				fprintf(tempFile, "%d %d\n", Q, recv_buf[v]);			
+			for(int v = 0; v < k_hat; v++){
+				fprintf(tempFile, "%d %d\n", Q, recv_buf[v + 2]);			
 				edgesAddedToClique++;
 			}
 			
@@ -320,7 +322,20 @@ int main(int argc, char* argv[]) {
 		free(recv_buf);
 	}
 
-    MPI_Barrier(MPI_COMM_WORLD);
+    
+	
+	// Writing Trivial edges to File
+	for(int j = 0; j < arraySize; j++){
+		if (adjMatrix_buffer[j] == 1){
+			int realativeIdx = j + (my_rank * arraySize);
+			int w = (int) floor (realativeIdx/graphNodes); // col index
+			int u = (int) (realativeIdx % graphNodes);  // row index
+			fprintf(tempFile, "%d %d\n", u, w);
+		}	
+	}
+	
+	MPI_Barrier(MPI_COMM_WORLD);
+
     // Destroy the window
     // printf("[MPI process %d] adjMatrix_window destroyed.\n", my_rank);
 	MPI_Win_free(&adjMatrix_window);
