@@ -7,6 +7,49 @@
 #include <sys/types.h>
 #include <string.h>
 
+
+typedef struct {
+    int* elements;
+    int size;
+    int capacity;
+} Set;
+
+void initialize(Set* set, int nodes) {
+    set->size = 0;
+    set->capacity = nodes;  // Initial capacity
+    set->elements = (int*)malloc(set->capacity * sizeof(int));
+    if (set->elements == NULL) {
+        printf("Memory allocation failed.\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+int removeElement(Set* set, int index) {
+    int element = set->elements[index];
+    for (int i = index; i < set->size - 1; i++) {
+        set->elements[i] = set->elements[i + 1];
+    }
+    set->size--;
+    return element;
+}
+
+
+void updateSet(Set* S, int graphNodes) {
+    int i;
+    for (i = 0; i < graphNodes; i++){
+		S->elements[S->size] = i;
+		S->size++;
+	}
+}
+
+void freeSet(Set* set) {
+    free(set->elements);
+    set->size = 0;
+    set->capacity = 0;
+    set->elements = NULL;
+}
+
+
 void createFolder(const char* folderName, int rank) {
     // Check if the folder exists, create it if not
     struct stat st;
@@ -20,6 +63,8 @@ void createFolder(const char* folderName, int rank) {
     }
 }
 
+
+
 int get_k_hat(int graph_nodes, int m_hat, int delta) {
 	int k_hat;
     float de = (2 * pow((double)graph_nodes, 2)) / m_hat;
@@ -28,46 +73,27 @@ int get_k_hat(int graph_nodes, int m_hat, int delta) {
 	return k_hat;
 }
 
-// int saveCliquesEdges(int q, int* W_Neighbours, int* W_Clique) {
-    // int cliqueEdges = 0;
-    // for (int i = 0; i < clique_u_size; i++) {
-        // fprintf(tempFile, "%d %d\n", W_Neighbours[i], q);
-		// cliqueEdges++;
-    // }
-    // for (int j = 0; j < clique_v_size; j++) {
-        // fprintf(tempFile, "%d %d\n", q, W_Clique[j]);
-		// cliqueEdges++;
-    // }
-	// return cliqueEdges;
-// }
-
-
 int main(int argc, char* argv[]) {
     MPI_Init(&argc, &argv);
 
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-    int graphNodes = 32;
+    
 	int delta = 1;
+	int graphNodes = 32 ; //atoi(argv[2]);
+	const char* folderName = "temporaryEdges"; // Specify the folder name
     int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
-
     // Get my rank
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 	const char* filename = argv[1];
+	
     // Create the window for a 10x10 matrix
     const int ROWS = graphNodes;
     const int COLS = graphNodes/comm_size;
     bool* adjMatrix_buffer;
     MPI_Win adjMatrix_window;
     MPI_Win_allocate_shared(arraySize * sizeof(bool), sizeof(bool), MPI_INFO_NULL, MPI_COMM_WORLD, &adjMatrix_buffer, &adjMatrix_window);
-	// MPI_Win_allocate_shared(1 * sizeof(int), sizeof(int), MPI_INFO_NULL, MPI_COMM_WORLD, &whileTerminator_buffer, &whileTerminator);
-	// *whileTerminator_buffer = 1;
-    // Initialize the shared matrix
-    // for (int i = 0; i < arraySize; i++) {       
-            // adjMatrix_buffer[i] = rand() % 2;// Initialize with unique values        
-    // }
-    // Modify elements of the shared matrix
 	MPI_Barrier(MPI_COMM_WORLD);
 	
 	// Initilizing the adjMatrix
@@ -123,10 +149,20 @@ int main(int argc, char* argv[]) {
 				// printf("\n");
 		// }
 		// printf("\n");
+		// if (lp >= rp)
+			// graphNodes = lp;
+		// else
+			// graphNodes = rp;
 		printf("Total edges : %d\n", m_hat);
 		
 // Algorithm Implementation starts here
-
+		// Set* S;
+		// initialize(S, graphNodes);
+		// updateSet(S, graphNodes);
+		createFolder(folderName, my_rank);
+		char f_name[100];
+		sprintf(f_name, "cliqueEdgesProcessor_%d.mtx", my_rank);
+		const char* fileName = f_name; // = "output.txt";  // Specify the file name
 		int *edgesRemoved = (int*)malloc((comm_size) * sizeof(int));
 		MPI_Request gRequest, sRequest;		
 		int k_hat = get_k_hat(graphNodes, m_hat, delta);
@@ -159,7 +195,7 @@ int main(int argc, char* argv[]) {
 						R = r + 1;
 						int vertices = graphNodes - s;
 						int v = s;
-						s = graphNodes;
+						
 						int* targetIdx = (int*)malloc(vertices * sizeof(int));
 						int neighboursIdx = 0;
 						int* neighbours = (int*)malloc(graphNodes * sizeof(int));	
@@ -183,10 +219,27 @@ int main(int argc, char* argv[]) {
 								edgeRemoved += vertices;
 								neighboursIdx++;
 							}
-						}
+						}					
+						
+						char filePath[256]; // Adjust the size as needed
+						snprintf(filePath, sizeof(filePath), "%s/%s", folderName, fileName);
+						FILE* file = NULL;
+						file = fopen(filePath, "a");
+						
+						
+						for(int i = 0; i < neighboursIdx; i++)
+							fprintf(file, "%d %d\n", neighbours[i], q);
+						
+						
+						for(int v = 0; v < vertices; v++)
+							fprintf(file, "%d %d\n", q, s + v);			
+						
+						fclose(file);
+			
 						free(targetIdx);
 						free(neighbours);
 						q++;
+						s = graphNodes;
 						break;
 					}
 					// MPI_Wait(&sRequest, MPI_STATUS_IGNORE);
@@ -214,16 +267,21 @@ int main(int argc, char* argv[]) {
 		
 		printf("Sending terminating request\n");
 		send_buf[0] = k_hat;
+
 		for ( int r = 1; r < comm_size; r++){
 			MPI_Isend(&send_buf, k_hat, MPI_INT, r, 0, MPI_COMM_WORLD, &sRequest); // , &request					
 		}
-		
+
 		MPI_Wait(&sRequest, MPI_STATUS_IGNORE);
+		// freeSet(S);
+		// free(S);
 	}
 	else{
 		MPI_Request request;
 		int received;
-		
+		char f_name[100];
+		sprintf(f_name, "cliqueEdges_Processor_%d.mtx", my_rank);
+		const char* fileName = f_name; // = "output.txt";  // Specify the file name
 		int k_hat_buffer;
 		MPI_Recv(&k_hat_buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		int recv_buf[k_hat_buffer + 2]; // = (int*)malloc((k_hat + 1) * sizeof(int));
@@ -236,6 +294,7 @@ int main(int argc, char* argv[]) {
 			printf("MPI process %d finding common neighbours for k_hat %d vertices.\n", my_rank, k_hat);
 			if (k_hat < 2)
 				break;
+			
 			printf("[MPI process %d]----------- received vertex (", my_rank);
 			for(int v = 0; v <= k_hat + 1; v++)
 				printf("%d, ", recv_buf[v]);
@@ -267,10 +326,20 @@ int main(int argc, char* argv[]) {
 			MPI_Isend(&edgeRemoved, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, &request);
 			
 			
+			char filePath[256]; // Adjust the size as needed
+			snprintf(filePath, sizeof(filePath), "%s/%s", folderName, fileName);
+			FILE* file = NULL;
+			file = fopen(filePath, "a");
 			
 			
+			for(int i = 0; i < neighboursIdx; i++)
+				fprintf(file, "%d %d\n", neighbours[i], Q);
 			
 			
+			for(int v = 2; v <= k_hat+1; v++)
+				fprintf(file, "%d %d\n", Q, recv_buf[v]);			
+			
+			fclose(file);
 			
 			
 			
