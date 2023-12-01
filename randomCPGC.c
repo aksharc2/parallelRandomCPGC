@@ -9,16 +9,12 @@
 #include <dirent.h>
 #include <time.h>
 
-#define MAX_FILENAME_LEN 512
-#define MAX_LINE_LEN 1024
-
-
-void createFolder(const char* temporaryDirectory, int rank) {
+void createFolder(const char* folderName, int rank) {
     // Check if the folder exists, create it if not
     struct stat st;
-    if (stat(temporaryDirectory, &st) == -1) {
+    if (stat(folderName, &st) == -1) {
         if (rank == 0) {
-            if (mkdir(temporaryDirectory, 0777) != 0) {
+            if (mkdir(folderName, 0777) != 0) {
                 perror("Error creating the folder");
                 MPI_Abort(MPI_COMM_WORLD, 1); // Terminate MPI
             }
@@ -46,13 +42,12 @@ int main(int argc, char* argv[]) {
     
 	int delta = 1;
 	int graphNodes = atoi(argv[2]);
-	const char* temporaryDirectory = "temporaryEdges"; // Specify the folder name
+	const char* folderName = "temporaryEdges"; // Specify the folder name
     int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
     // Get my rank
-    int rank;
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    int my_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 	const char* filename = argv[1];
-	
 	int edgesAddedToClique = 0;
 	int TotalCliqueEdges = 0;
 	int InitialEdges = 0;
@@ -65,9 +60,8 @@ int main(int argc, char* argv[]) {
     MPI_Win_allocate_shared(arraySize * sizeof(bool), sizeof(bool), MPI_INFO_NULL, MPI_COMM_WORLD, &adjMatrix_buffer, &adjMatrix_window);
 	MPI_Barrier(MPI_COMM_WORLD);
 	
-	
 	// Initilizing the adjMatrix
-	if (rank == 0){
+	if (my_rank == 0){
 		int lp, mp , rp, edges;
 		
 		
@@ -107,43 +101,24 @@ int main(int argc, char* argv[]) {
 		InitialEdges = m_hat;
 		printf("Initial edges: %d\n",m_hat);
 		fclose(file);
-	// }
-        
-	// if (rank == 0) {
-	    // printf("The array size is %d.\n", arraySize);
-		
-		
-		// Print the initial matrix
-		// for(int j = 0; j < comm_size * arraySize; j++){
-			// printf("%d ", adjMatrix_buffer[j]);
-			// if ((j+1)%graphNodes == 0)
-				// printf("\n");
-		// }
-		// printf("\n");
-		// if (lp >= rp)
-			// graphNodes = lp;
-		// else
-			// graphNodes = rp;
-		// printf("Total edges : %d\n", m_hat);
-		
-// Algorithm Implementation starts here
 
-		int S[graphNodes]; // initialized the set S
-		createFolder(temporaryDirectory, rank);
+		int* S  = (int*)malloc(graphNodes * sizeof(int));
+		createFolder(folderName, my_rank);
 		char f_name[100];
-		sprintf(f_name, "cliqueEdgesProcessor_%d.mtx", rank);
+		sprintf(f_name, "cliqueEdgesProcessor_%d.mtx", my_rank);
 		const char* fileName = f_name; // = "output.txt";  // Specify the file name
-		int edgesRemoved[comm_size];// = (int*)malloc((comm_size) * sizeof(int));
+		int* edgesRemoved = (int*)malloc((comm_size) * sizeof(int));
 		MPI_Request gRequest, sRequest;		
 		int k_hat = get_k_hat(graphNodes, m_hat, delta);
-		printf("k_hat: %d\n", k_hat);
+		
 		for ( int r = 1; r < comm_size; r++){
-			MPI_Isend(&k_hat, 1, MPI_INT, r, 0, MPI_COMM_WORLD, &sRequest);
+			MPI_Send(&k_hat, 1, MPI_INT, r, 0, MPI_COMM_WORLD);
 		}
 		int sendBufferSize = k_hat + 2;
-		int send_buf[sendBufferSize]; // = (int*)malloc((k_hat + 1) * sizeof(int));
+		int* send_buf = (int*)malloc(sendBufferSize * sizeof(int));
 		int q = graphNodes;
 		srand(time(NULL));
+		printf("k_hat: %d\n", k_hat);
 		while (k_hat > 1) {
 			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);
 			for (int i  = 0; i < graphNodes; i++)
@@ -165,12 +140,12 @@ int main(int argc, char* argv[]) {
 							S[j] = S[j + 1];
 						}
 						setSize--;
-						// printf("				MPI process %d sends value %d to processor %d.\n", rank, send_buf[k], r);
+						
 					}	
-					
-					MPI_Send(&send_buf, sendBufferSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
+					// printf("				MPI process %d sending values to processors.\n", my_rank);
+					MPI_Send(send_buf, sendBufferSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
 					if (setSize <= k_hat){
-						// printf("				MPI process %d finds common neighbour for graphNodes - s vertices.\n", rank);
+						printf("				MPI process %d finds common neighbour for remaining vertices with %d processors.\n", my_rank, r);
 						// printf("**************setSize: %d\n", setSize);
 						R = r + 1;
 						int* targetIdx = (int*)malloc(setSize * sizeof(int));
@@ -180,7 +155,7 @@ int main(int argc, char* argv[]) {
 						for(int k = 0; k < remainingVertices; k++){
 							int p = (int) floor((S[k] * graphNodes)/arraySize);
 							int idx = (S[k] * graphNodes) % arraySize;
-							targetIdx[k] = (p - rank) * arraySize + idx;
+							targetIdx[k] = (p - my_rank) * arraySize + idx;
 							setSize--;
 							// printf("**************setSize: %d %d \n", setSize, k);
 						}
@@ -190,9 +165,10 @@ int main(int argc, char* argv[]) {
 							for(int k = 0; k < remainingVertices; k++){
 								temp = temp * adjMatrix_buffer[targetIdx[k] + i];
 							}
+							printf("%d ", i);
 							if (temp){
 								neighbours[neighboursIdx] = i;	
-								// printf("[MPI process %d]----------- vertex u_%d has a common edge with (", rank, i);
+								// printf("[MPI process %d]----------- vertex u_%d has a common edge with (", my_rank, i);
 									// for(int v = 0; v < remainingVertices; v++)
 										// printf("v_%d, ", recv_buf[v]);
 								// printf(")\n");
@@ -203,11 +179,11 @@ int main(int argc, char* argv[]) {
 								}
 							}					
 						}
+						printf("************** found neighbours ****************\n");
 						char filePath[256]; // Adjust the size as needed
-						snprintf(filePath, sizeof(filePath), "%s/%s", temporaryDirectory, fileName);
-						FILE* file = NULL;
-						file = fopen(filePath, "a");
-						// printf("**************************Processor %d writing to file\n", rank);
+						snprintf(filePath, sizeof(filePath), "%s/%s", folderName, fileName);
+						FILE* file = fopen(filePath, "a");
+						printf("**************************Processor %d writing sent request to %d processors\n", my_rank, r);
 						
 						for(int i = 0; i < neighboursIdx; i++){
 							fprintf(file, "%d %d\n", neighbours[i], q);
@@ -225,20 +201,23 @@ int main(int argc, char* argv[]) {
 						break;
 					}
 					// MPI_Wait(&sRequest, MPI_STATUS_IGNORE);
+					
 				}
+				
 				// MPI_Gather(&edgeRemoved, 1, MPI_INT, edgesRemoved, 1, MPI_INT, 0, MPI_COMM_WORLD); //, &gRequest
 				// MPI_Wait(&gRequest, MPI_STATUS_IGNORE);
 				edgesRemoved[0] = edgeRemoved;
 				m_hat = m_hat - edgesRemoved[0];
 				// printf("Edges removed by processor %d: %d \n", 0, edgesRemoved[0]);
 				for ( int r = 1; r < R; r++){
+					// printf("*******************************Processor %d waiting Line 234***************************** \n\n", my_rank);
 					MPI_Recv(&edgeRemoved, 1, MPI_INT, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 					edgesRemoved[r] = edgeRemoved;
 					m_hat = m_hat - edgesRemoved[r];
 					// printf("Edges removed by processor %d: %d \n", r, edgesRemoved[r]);
 				}
 				// printf("\n");
-				// printf("remaining edges : %d\n", m_hat);
+				printf("remaining edges : %d\n", m_hat);
 				
 			}
 			// calculate k_hat
@@ -247,13 +226,13 @@ int main(int argc, char* argv[]) {
 			// printf("k_hat: %d\n", k_hat);
 		}
 		
-		printf("Sending terminating request\n");
+		printf("Sending terminati request\n");
 		send_buf[0] = 1;
 
 		for ( int r = 1; r < comm_size; r++){
-			MPI_Send(&send_buf, sendBufferSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
+			MPI_Send(send_buf, sendBufferSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
 		}
-
+		
 		// MPI_Wait(&sRequest, MPI_STATUS_IGNORE);
 		TotalCliqueEdges = edgesAddedToClique;
 		
@@ -262,40 +241,44 @@ int main(int argc, char* argv[]) {
 			TotalCliqueEdges += edgesAddedToClique;
 		}
 		printf("Edges in the cliques: %d | Remaining/Trivial edges: %d | Edges in compressed graph: %d \n", TotalCliqueEdges, m_hat, TotalCliqueEdges + m_hat);
-		
+		free(send_buf);
+		free(edgesRemoved);
 	}
 	else{
 		MPI_Request request;
 		int received;
 		char f_name[100];
-		sprintf(f_name, "cliqueEdges_Processor_%d.mtx", rank);
+		
+		sprintf(f_name, "cliqueEdges_Processor_%d.mtx", my_rank);
 		const char* fileName = f_name; // = "output.txt";  // Specify the file name
 		int k_hat_buffer;
 		MPI_Recv(&k_hat_buffer, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		
 		int recvBufferSize = k_hat_buffer + 2;
-		int recv_buf[recvBufferSize]; // = (int*)malloc((k_hat + 1) * sizeof(int));
+		int* recv_buf = (int*)malloc(recvBufferSize * sizeof(int));
 		
 		while(1){
-			int edgeRemoved = 0;
-			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);				
-			MPI_Recv(&recv_buf, recvBufferSize, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			
+			// MPI_Bcast(&k_hat, 1, MPI_INT, 0, MPI_COMM_WORLD);
+			printf("Receiving Processor %d waiting Line 285 with %d recvBufferSize\n", my_rank, recvBufferSize);	
+			MPI_Recv(recv_buf, recvBufferSize, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			int k_hat = recv_buf[0];
 			int Q = recv_buf[1];
-			// printf("MPI process %d finding common neighbours for k_hat %d vertices.\n", rank, k_hat);
+			// printf("MPI process %d finding common neighbours for k_hat %d vertices.\n", my_rank, k_hat);
 			if (k_hat < 2)
 				break;
-			
-			printf("[MPI process %d]----------- received vertex (", rank);
-			for(int v = 0; v <= k_hat + 1; v++)
-				printf("%d, ", recv_buf[v]);
-			printf(")\n");
+			int edgeRemoved = 0;
+			// printf("[MPI process %d]----------- received vertex (", my_rank);
+			// for(int v = 0; v <= k_hat + 1; v++)
+				// printf("%d, ", recv_buf[v]);
+			// printf(")\n");
 			int* targetIdx = (int*)malloc(k_hat * sizeof(int));	
-			int* neighbours = (int*)malloc(graphNodes * sizeof(int));				
+			int* neighbours = (int*)malloc((graphNodes) * sizeof(int));				
 			for(int k = 0; k < k_hat + 2; k++){
 				received = recv_buf[k + 2];
 				int p = (int) floor((received * graphNodes)/arraySize);
 				int idx = (received * graphNodes) % arraySize;
-				targetIdx[k] = (p - rank) * arraySize + idx;
+				targetIdx[k] = (p - my_rank) * arraySize + idx;
 			}
 			int neighboursIdx = 0;
 			for(int i = 0; i < graphNodes; i++){
@@ -305,7 +288,7 @@ int main(int argc, char* argv[]) {
 				}
 				if (temp){
 					neighbours[neighboursIdx] = i;					
-					// printf("[MPI process %d]----------- vertex u_%d has a common edge with (", rank, neighbours[neighboursIdx]);
+					// printf("[MPI process %d]----------- vertex u_%d has a common edge with (", my_rank, neighbours[neighboursIdx]);
 						// for(int v = 2; v <= k_hat+1; v++)
 							// printf("v_%d, ", recv_buf[v]);
 					// printf(")\n");
@@ -317,12 +300,11 @@ int main(int argc, char* argv[]) {
 				}
 			}
 			MPI_Send(&edgeRemoved, 1, MPI_INT, 0, 0, MPI_COMM_WORLD); // , &request
-			
+			// printf("[MPI process %d]----------- found common neighbours", my_rank);
 			
 			char filePath[256]; // Adjust the size as needed
-			snprintf(filePath, sizeof(filePath), "%s/%s", temporaryDirectory, fileName);
-			FILE* file = NULL;
-			file = fopen(filePath, "a");
+			snprintf(filePath, sizeof(filePath), "%s/%s", folderName, fileName);
+			FILE* file = fopen(filePath, "a");
 			
 			
 			for(int i = 0; i < neighboursIdx; i++){
@@ -334,86 +316,28 @@ int main(int argc, char* argv[]) {
 				edgesAddedToClique++;
 			}
 			fclose(file);
-			
-			
-			
+
 			free(targetIdx);
 			free(neighbours);
 		}
-		// free(recv_buf);
-		// printf("Processor %d terminating as (k_hat) < 2 \n", rank);
+		
+		// printf("Processor %d terminating as (k_hat) < 2 \n", my_rank);
 		MPI_Send(&edgesAddedToClique, 1, MPI_INT, 0, 0, MPI_COMM_WORLD); // , &request
+		free(recv_buf);
 	}
 
     MPI_Barrier(MPI_COMM_WORLD);
-	
-
-	
-	// FILE *outputFile;
-	// char outputFilename[MAX_FILENAME_LEN];
-	// snprintf(outputFilename, MAX_FILENAME_LEN, "%s_%s", "compressed", filename);
-	
-    // if (rank == 0) {
-        // outputFile = fopen(outputFilename, "w");
-        // if (outputFile == NULL) {
-            // perror("Error opening output file");
-            // MPI_Abort(MPI_COMM_WORLD, 1);
-        // }
-    // }	
-	
-	
-	
-	// DIR *dir;
-    // struct dirent *ent;
-	
-	// if ((dir = opendir(temporaryDirectory)) != NULL) {
-        // while ((ent = readdir(dir)) != NULL) {
-            // if (ent->d_type == DT_REG && strstr(ent->d_name, ".mtx")) {
-                // char inputFilename[MAX_FILENAME_LEN];
-                // snprintf(inputFilename, MAX_FILENAME_LEN, "%s/%s", temporaryDirectory, ent->d_name);
-                // FILE *inputFile = fopen(inputFilename, "r");
-                // if (inputFile == NULL) {
-                    // if (rank == 0) {
-                        // printf("Error opening input file: %s\n", inputFilename);
-                    // }
-                    // MPI_Abort(MPI_COMM_WORLD, 1);
-                // }
-
-                // char line[MAX_LINE_LEN];
-
-                // while (fgets(line, MAX_LINE_LEN, inputFile) != NULL) {
-                    // if (rank == 0) {
-                        // fputs(line, outputFile);
-						// printf("%d puts %s", rank, line);
-                    // } else {
-                        // MPI_Send(line, strlen(line), MPI_CHAR, 0, 0, MPI_COMM_WORLD);
-						// printf("%d sent %s", rank, line);
-                    // }
-                // }
-
-                // fclose(inputFile);
-            // }
-        // }
-        // closedir(dir);
-    // } else {
-        // if (rank == 0) {
-            // perror("Error opening input directory");
-        // }
-        // MPI_Abort(MPI_COMM_WORLD, 1);
-    // }
-
-    if (rank == 0) {
-        // fclose(outputFile);
+    // Destroy the window
+    // printf("[MPI process %d] adjMatrix_window destroyed.\n", my_rank);
+    MPI_Win_free(&adjMatrix_window);
+	// MPI_Win_free(&whileTerminator);
+	if (my_rank == 0){
 		double end = MPI_Wtime();
 		printf("Time elapsed during the job: %.2fs.\n", end - start);
 		printf("Compression ratio: %f \n", (float) InitialEdges/(float) (TotalCliqueEdges + m_hat)); 
 	}
 	MPI_Barrier(MPI_COMM_WORLD);
-	// Destroy the shared window
-    MPI_Win_free(&adjMatrix_window);
-	
     MPI_Finalize();
-	
     return EXIT_SUCCESS;
 }
 
