@@ -5,7 +5,7 @@
  */
 
  /*On Grid follow this instruction to get a running time:
-   0. struct timespec begin, end;
+   0.struct timespec begin, end;
    1.clock_gettime(CLOCK_REALTIME, &begin);
    2.clock_gettime(CLOCK_REALTIME, &end);         
    3.long seconds = end.tv_sec - begin.tv_sec;
@@ -35,6 +35,9 @@ void createFolder(const char* folderName) {
     }
 }
 
+struct timespec begin, end, ioTimeStart, ioTimeEnd, ioElapsed;
+double elapsed_read;
+double elapsed_write = 0.000;
 bool** adj_matrix;
 int* leftClique;
 int* rightClique;
@@ -51,6 +54,7 @@ int graphNodes;
 struct timespec begin, end;
 
 void load_adj_matrix(const char* inputFilename ){
+	clock_gettime(CLOCK_REALTIME, &ioTimeStart);
     FILE* filePointer = fopen(inputFilename, "r");
     char line[MAXCHAR];
 	int lp, rp, mp, edges, u, w;
@@ -74,6 +78,10 @@ void load_adj_matrix(const char* inputFilename ){
 		initialEdges = m_hat = edges;
         fclose(filePointer);
     }
+	clock_gettime(CLOCK_REALTIME, &ioTimeEnd);
+	long seconds = ioTimeEnd.tv_sec - ioTimeStart.tv_sec;
+    long nanoseconds = ioTimeEnd.tv_nsec - ioTimeStart.tv_nsec;
+    elapsed_read = (seconds + nanoseconds * 1e-9) * 1000;
 }
 
 void get_k_hat() {
@@ -102,12 +110,17 @@ void getDeAllocate(int n, bool** arr) {
 }
 
 void saveCliqueEdges(int commonNeighbours){
+	clock_gettime(CLOCK_REALTIME, &ioTimeStart);
 	for(int u = 0; u < commonNeighbours; u++){
 		fprintf(compressedFile, "%d %d\n", leftClique[u], q);
 	}
 	for (int w = 0; w < k_hat; w++){
 		fprintf(compressedFile, "%d %d\n", q, rightClique[w]);
 	}
+	clock_gettime(CLOCK_REALTIME, &ioTimeEnd);
+	long seconds = ioTimeEnd.tv_sec - ioTimeStart.tv_sec;
+    long nanoseconds = ioTimeEnd.tv_nsec - ioTimeStart.tv_nsec;
+    elapsed_write = elapsed_write + (seconds + nanoseconds * 1e-9) * 1000;
 }
 
 void findCommonNeighbours() {
@@ -136,11 +149,11 @@ void findCommonNeighbours() {
 		cliqueEdges += u + k_hat;
 		saveCliqueEdges(u);
 	}
-	else{
+	// else{
 		// printf("No common neighbours found\n");
-		for(int i = 0; i < k_hat; i++)
-			printf(" %d ", rightClique[i]);
-	}
+		// for(int i = 0; i < k_hat; i++)
+			// printf(" %d ", rightClique[i]);
+	// }
 }
 
 float compressionRatio() {
@@ -192,6 +205,7 @@ void RandomizedAlgorithm() {
 
 
 int main(int argc, char* argv[]) {
+	clock_gettime(CLOCK_REALTIME, &begin);
 	const char* inputFilename = argv[1];
 	graphNodes = atoi(argv[2]);
 	delta = atof(argv[3]);
@@ -207,7 +221,7 @@ int main(int argc, char* argv[]) {
 	char filePath[256]; // Adjust the size as needed
 	// snprintf(filePath, sizeof(filePath), "%s/%s", "sequentialCompressedGraphs", tempName);
     compressedFile = fopen(tempName, "w");
-	clock_t start = clock();
+	
     load_adj_matrix(inputFilename);
     RandomizedAlgorithm();
 	FILE * compFile = fopen(compressedFileName, "w");
@@ -227,13 +241,15 @@ int main(int argc, char* argv[]) {
 	char command[250];
 	sprintf(command, "cat %s >> %s", tempName, compressedFileName);
 	system(command);
-	remove(tempName); 
-    clock_t stop = clock();
-    double elapsed = ((double)(stop - start)) / CLOCKS_PER_SEC * 1000.0;
-    //printf("\nExecution time: %lf", elapsed);
-    printf("%d,%d,%d,%lf, %lf\n", graphNodes, density, instance, compression_ratio, elapsed);
-    getDeAllocate(graphNodes, adj_matrix);
+	getDeAllocate(graphNodes, adj_matrix);
 	free(S);
+    clock_gettime(CLOCK_REALTIME, &end);
+	long seconds = end.tv_sec - begin.tv_sec;
+    long nanoseconds = end.tv_nsec - begin.tv_nsec;
+    double totalElapsed = (seconds + nanoseconds * 1e-9) * 1000;
+	remove(tempName); 
+    printf("%d,%d,%d, %.2f, %lf, %lf, %lf, %lf\n", graphNodes, density, instance, delta, compression_ratio, totalElapsed/1000, elapsed_read/1000, elapsed_write/1000);
+
     return 0;
 }
 

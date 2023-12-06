@@ -29,21 +29,22 @@ cd /wsu/home/gp/gp69/gp6989/graphCompression/
 #cp /wsu/home/gp/gp69/gp6989/graphCompression/parallelCpaExe  $TMPDIR
 
 echo "graphNodes,density,expNo,delta,compressionRatio,executionTime,readTime,writeTime,mergeTime,cores" > parallelRandomizedCPGCResults.csv
-for exp in 1 2
+echo "graphNodes,density,expNo,delta,compressionRatio,executionTime,readTime,writeTime" > sequentialRandomizedCPGCResults.csv
+for exp in 1 #2
 do
     for node in 2048 4096 8192 16384 #32768
     do
-        for density in 80 85 90 95 98 100 40 50 60 70
+        for density in 80 85 90 95 98
         do
-            for run in 1 2 3 4 5 6 7 8 9 10
+            for run in 1 2 #3 4 5 6 7 8 9 10
             do
                 for delta in 0.5 0.6 0.7 0.8 0.9 1
                 do
+					fileName="datasets/bipartite_graph_${node}_${density}_${exp}.mtx"
+					./sequentialRCPGC $fileName $node $delta $density  $exp >> sequentialRandomizedCPGCResults.csv
                     for proc in 4 8 12 16 20 24 28 32 36 # 40 44 48 52 56
-                    do
-                        fileName="datasets/bipartite_graph_${node}_${density}_${exp}.mtx"
+                    do 
                         mpirun -np $proc ./randomCPGC $fileName $node $delta $density  $exp >> parallelRandomizedCPGCResults.csv
-			#sleep 1
                     done
                 done
             done
