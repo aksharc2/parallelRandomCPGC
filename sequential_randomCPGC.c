@@ -16,7 +16,6 @@
 #pragma warning(disable:4996)
 #include <stdio.h>
 #include <stdlib.h>
-#include <mpi.h>
 #include <math.h>
 #include <stdbool.h>
 #include <sys/stat.h>
@@ -26,7 +25,7 @@
 #include <time.h>
 
 
-#define MAXCHAR = 256
+#define MAXCHAR 256
 
 void createFolder(const char* folderName) {
     // Check if the folder exists, create it if not
@@ -36,35 +35,23 @@ void createFolder(const char* folderName) {
     }
 }
 
-
-int get_k_hat(int graph_nodes, int m_hat, float delta) {
-	int k_hat;
-    float de = (2 * pow((double)graph_nodes, 2)) / m_hat;
-    float nu = delta * log2((double)graph_nodes);
-    k_hat = floor((double)nu / (log2((double)de)));
-	return k_hat;
-}
-
-
 bool** adj_matrix;
 int* leftClique;
 int* rightClique;
 int k_hat;
-int delta;
+float delta;
 int m_hat = 0;
 int initialEdges;
 int edgesRemoved = 0;
 int cliqueEdges = 0;
 int q; // Clique index
 int* S;
-
+FILE* compressedFile;
 int graphNodes;
 struct timespec begin, end;
-char f_name[100]; // name of the adjacency matrix file
 
-
-void load_adj_matrix(){
-    FILE* filePointer = fopen(f_name, "r");
+void load_adj_matrix(const char* inputFilename ){
+    FILE* filePointer = fopen(inputFilename, "r");
     char line[MAXCHAR];
 	int lp, rp, mp, edges, u, w;
     if (!filePointer)
@@ -82,6 +69,7 @@ void load_adj_matrix(){
 			fgets(line, sizeof(line), filePointer);
 			sscanf(line, "%d %d", &u, &w);
 			adj_matrix[u-1][w-1] = 1;
+			// printf("A(%d, %d) = %d \n", u, w, adj_matrix[u-1][w-1]);
 		}
 		initialEdges = m_hat = edges;
         fclose(filePointer);
@@ -113,9 +101,18 @@ void getDeAllocate(int n, bool** arr) {
     free(arr);
 }
 
-int findCommonNeighbours() {
+void saveCliqueEdges(int commonNeighbours){
+	for(int u = 0; u < commonNeighbours; u++){
+		fprintf(compressedFile, "%d %d\n", leftClique[u], q);
+	}
+	for (int w = 0; w < k_hat; w++){
+		fprintf(compressedFile, "%d %d\n", q, rightClique[w]);
+	}
+}
+
+void findCommonNeighbours() {
     int i, j;
-    printf("\nLeft Partition: ");
+    // printf("\nLeft Partition: ");
     int u = 0;
     for (i = 0; i < graphNodes; i++) {
         int flag = 0;
@@ -131,47 +128,44 @@ int findCommonNeighbours() {
                 m_hat -= 1; // need to remove this for parallel implementation
                 edgesRemoved += 1; // need to remove this for parallel implementation
             }
-            printf("%d ", leftClique[u]);
+            // printf("%d ", leftClique[u]);
             u++;
         }
     }
-	cliqueEdges += u * k_hat;
-    //printf("\n Size of Left Partition of %d Clique: %d", d, u);
-    //printf("\nEdges in Clique: %d", cliqueEdges);
-	return u;
+	if (u){
+		cliqueEdges += u + k_hat;
+		saveCliqueEdges(u);
+	}
+	else{
+		// printf("No common neighbours found\n");
+		for(int i = 0; i < k_hat; i++)
+			printf(" %d ", rightClique[i]);
+	}
 }
 
 float compressionRatio() {
     return ((float)initialEdges / (m_hat + cliqueEdges));
 }
 
-void saveCliqueEdges(int commonNeighbours, int q){
-	for(int u = 0; u < commonNeighbours; u++){
-		fprintf("%d %d\n", leftClique[u], q);
-	}
-	for (int w = 0; w < k_hat; w++){
-		fprintf("%d %d\n", q, rightClique[w]);
-	}
-}
-
-
 void RandomizedAlgorithm() {
     int nodeIndex;
-	int q = graphNodes;
+	q = graphNodes;
 	get_k_hat();
+	// printf("k_hat: %d m_hat: %d cliqueEdges: %d", k_hat, m_hat, cliqueEdges);
     while (k_hat > 1) {
 		for (int i = 0; i < graphNodes; i++){
 			S[i] = i;
 		}
 		int setSize = graphNodes;
 		while (setSize > 0){
-			printf("Clique %d \nright partition: ", q);
+			// printf("Clique %d \nright partition: ", q);
 			leftClique = (int*)malloc(graphNodes * sizeof(int));
 			rightClique = (int*)malloc(k_hat * sizeof(int));
-			if (setSize > k_hat){
+			if (setSize >= k_hat){
 				for(int i = 0; i < k_hat; i++){
-					nodeIndex = rand() % setSize
+					nodeIndex = rand() % setSize;
 					rightClique[i] = S[nodeIndex];
+					// printf("%d ", rightClique[i]);
 					setSize--;
 					for (int j = nodeIndex; j < setSize; j++){
 						S[j] = S[j+1];
@@ -181,54 +175,65 @@ void RandomizedAlgorithm() {
 			else{
 				for(int i = 0; i < setSize; i++){
 					rightClique[i] = S[i];
-					setSize--;
+					// printf("%d ", rightClique[i]);
 				}
+				setSize = 0;
 			}
-			int commonNeighbours = findCommonNeighbours();
-			get_k_hat();
-			saveCliqueEdges(commonNeighbours, q);
+			findCommonNeighbours();
 			free(leftClique);
 			free(rightClique);
 			q++;
+			// printf("k_hat: %d m_hat: %d cliqueEdges: %d\n", k_hat, m_hat, cliqueEdges);
 		}
+		get_k_hat();
     }
+	// printf("k_hat: %d m_hat: %d cliqueEdges: %d\n", k_hat, m_hat, cliqueEdges);
 }
 
 
-int main() {
-    int nodes = 32; // atoi(argv[1]);  // int argc, char* argv[]
-    int density = 80; // atoi(argv[2]);
-    int exp = 1; // atoi(argv[3]);
+int main(int argc, char* argv[]) {
+	const char* inputFilename = argv[1];
+	graphNodes = atoi(argv[2]);
+	delta = atof(argv[3]);
+	int density = atoi(argv[4]);
+	int instance = atoi(argv[5]);
     srand(time(NULL));
-    graphNodes = nodes;
     adj_matrix = getAllocate(graphNodes); 
     S = (int*)malloc((graphNodes) * sizeof(int));
-    FILE* tempFile = fopen(filePath, "a");
-
-    //sprintf(f_name, "Bipartite%dX%d.csv", graphNodes, graphNodes);
-    sprintf(f_name, "New_generated_data/Bipartite_%dX%d/%d/Bipartite_%dX%d_%d_%d.csv", nodes, nodes, density, nodes, nodes, density, exp);
-
-    load_adj_matrix();
-    clock_t start = clock();
+	char tempName[100];
+	char compressedFileName[100];
+	sprintf(tempName, "S_temp_%d_%d_%d.mtx", graphNodes, density, instance);
+	sprintf(compressedFileName, "S_compressed_graph_%d_%d_%d.mtx", graphNodes, density, instance);
+	char filePath[256]; // Adjust the size as needed
+	// snprintf(filePath, sizeof(filePath), "%s/%s", "sequentialCompressedGraphs", tempName);
+    compressedFile = fopen(tempName, "w");
+	clock_t start = clock();
+    load_adj_matrix(inputFilename);
     RandomizedAlgorithm();
-    //printf("\nk_hat: %d\n", k_hat);
-
-    //printf("Inital Edges: %d mHat: %d Total edges: %d edges Removed: %d", initialEdges, m_hat, m_hat + cliqueEdges, edgesRemoved);
-    int totalEdges = m_hat + cliqueEdges;
+	FILE * compFile = fopen(compressedFileName, "w");
+	fclose(compressedFile);
     float compression_ratio = compressionRatio();
     //printf("\nCompression Ratio: %f", r);
+	fprintf(compFile, "%%MatrixMarket matrix coordinate pattern general\n");
+	fprintf(compFile, "%% Resulted compressed graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
+	fprintf(compFile, "%d %d %d\n", graphNodes, graphNodes, m_hat + cliqueEdges);
+	for(int i = 0; i < graphNodes; i++){
+		for(int j = 0; j < graphNodes; j++){
+			if (adj_matrix[i][j] != 0)
+				fprintf(compFile, "%d %d\n", i, j);
+		}
+	}
+	fclose(compFile);
+	char command[250];
+	sprintf(command, "cat %s >> %s", tempName, compressedFileName);
+	system(command);
+	remove(tempName); 
     clock_t stop = clock();
     double elapsed = ((double)(stop - start)) / CLOCKS_PER_SEC * 1000.0;
     //printf("\nExecution time: %lf", elapsed);
-    printf("\n%d,%d,%d,%lf, %lf,%s\n", nodes, density, exp, compression_ratio, elapsed, cores);
-    freeSet(S);
-    free(S);
+    printf("%d,%d,%d,%lf, %lf\n", graphNodes, density, instance, compression_ratio, elapsed);
     getDeAllocate(graphNodes, adj_matrix);
-    //getDeAllocateDouble(graphNodes, similarityMagnititude);
-    free(leftCliqueSize);
-    free(rightCliqueSize);
 	free(S);
-    //fclose(similarityArray);
     return 0;
 }
 
