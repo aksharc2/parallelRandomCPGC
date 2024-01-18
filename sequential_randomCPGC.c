@@ -149,11 +149,11 @@ void findCommonNeighbours() {
 		cliqueEdges += u + k_hat;
 		saveCliqueEdges(u);
 	}
-	// else{
+	//else{
 		// printf("No common neighbours found\n");
-		// for(int i = 0; i < k_hat; i++)
-			// printf(" %d ", rightClique[i]);
-	// }
+		//for(int i = 0; i < k_hat; i++)
+			//printf(" %d ", rightClique[i]);
+	//}
 }
 
 float compressionRatio() {

@@ -1,0 +1,12 @@
+https://ondemand.bridges2.psc.edu
+
+# go to project directory to use the available memory
+
+cd /ocean/projects/cis230093p/achavan
+
+
+# get the status of the sbatch job
+squeue -u achavan
+
+# to get the project memory status
+my_quotas

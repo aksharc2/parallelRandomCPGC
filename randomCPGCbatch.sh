@@ -30,13 +30,13 @@ cd /wsu/home/gp/gp69/gp6989/graphCompression/
 
 echo "graphNodes,density,expNo,delta,compressionRatio,executionTime,readTime,writeTime,mergeTime,cores" > parallelRandomizedCPGCResults.csv
 echo "graphNodes,density,expNo,delta,compressionRatio,executionTime,readTime,writeTime" > sequentialRandomizedCPGCResults.csv
-for exp in 1 #2
+for exp in 1 2
 do
     for node in 2048 4096 8192 16384 #32768
     do
         for density in 80 85 90 95 98
         do
-            for run in 1 2 #3 4 5 6 7 8 9 10
+            for run in 1 2 3 4 5
             do
                 for delta in 0.5 0.6 0.7 0.8 0.9 1
                 do
