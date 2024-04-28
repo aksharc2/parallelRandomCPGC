@@ -16,10 +16,10 @@ Following are the programs in this repository:
 Instructions to run the script on a graph and obtain compression.
 
 1. **Prerequisite packages and libraries required**
- - for c program
-   - gcc version 9.x and above (the program is tested with gcc versions 11.4,  13.2)
-   - OpenMPI version 4.0
-    
+  - for c program
+    - gcc version 9.x and above (the program is tested with gcc versions 11.4,  13.2)
+    - OpenMPI version 4.0 
+     
 
 ## References
 
