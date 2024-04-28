@@ -12,7 +12,10 @@ Following are the programs in this repository:
 3. fm.c (baseline that is related to our approach presented in [1])
 
 
+## Procedure to run the scripts
+Instructions to run the script on a graph and obtain compression.
 
+  ##1.
 
 ## References
 
