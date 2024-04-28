@@ -43,11 +43,11 @@
 
 set -x
 
-for node in  131072 #262144 # 32768 32 64 128 256 512 1024 2048 4096 8192 65536
+for node in  32 64 128 #  256 512 1024 2048 4096 8192  32768 65536 131072 #262144
 do
-    for density in 98 #90 95  
+    for density in 80 85 90 95 98 #90 95  
     do
-	for exp in 10 #1 2 3 4 5 6 7 8 9
+	for exp in 1 2 3 4 5 6 7 8 9 10
 	do
 	     python3 simpleGraphGenerator.py $node $density $exp
 	done
