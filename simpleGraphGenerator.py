@@ -55,7 +55,8 @@ if __name__ == '__main__':
         nodes = int(sys.argv[1])
         p = int(sys.argv[2])
         exp= int(sys.argv[3])
-        file_name = f'bipartite_graph_{nodes}_{p}_{exp}.mtx'
+        dataset_folder = 'datasets/'
+        file_name = f'{dataset_folder}bipartite_graph_{nodes}_{p}_{exp}.mtx'
         edges = save_to_mtx_file(nodes, p, file_name)
         line_number = 2
         new_line = f'{nodes} {nodes} {edges}'
