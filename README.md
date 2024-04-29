@@ -112,13 +112,18 @@ The obtained compression ratio and the running time of the C programs for Seq-RC
 ## Generating plots with the results
 We use Jupyter Notebook to generate plots for the paper. Following instrustions provide Jupyter Notebook installation procedure and how to generate the plots:
 - installing Jupyter Notebook 
-```bash
-sudo apt-get update
-sudo apt-get install python3
-sudo apt-get install python3-pip
-pip3 install notebook
-```
-
+  - ```bash
+    sudo apt-get update
+    sudo apt-get install python3
+    sudo apt-get install python3-pip
+    pip3 install notebook
+    ```
+  - If you see a warning related to path as shown in Image: 3, then add the path where the package is installed to the PATH using the following commands
+    - ```bash export PATH="${PATH}:/home/cpgc/.local/bin"  ```, replace "/home/cpgc/.local/bin" with the path where Jupyter Notebook is installed.
+    - ```bash source ~/.bashrc```
+  - For detailed installation procedure see [Jupyter Notebook Installation Procedure](https://saturncloud.io/blog/how-to-install-jupyter-notebook-in-ubuntu/)
+- generating results
+  -
 
 
 
