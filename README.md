@@ -66,7 +66,7 @@ python3 simpleGraphGenerator.py nodes density experimentNo
   - fileName: is the name of the input file along with the absolute or relative path.
   - nodes: the number of vertices $n$, in left or right partition of the given graph.
   - delta: it is constant factor $\delta$, i.e. $0 < \delta < 1$.
-  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
+  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2$) in the given graph.
   - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
 
 - Compiling Par-RCP: ```bash mpicc randomCPGC.c -o randomCPGC -lm ```
@@ -74,14 +74,14 @@ python3 simpleGraphGenerator.py nodes density experimentNo
   - nproc: number of processors to use for running the program.
   - fileName: is the name of the input file along with the absolute or relative path.
   - nodes: the number of vertices $n$, in left or right partition of the given graph.
-  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
+  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2$) in the given graph.
   - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
 
 - Compiling FM: ```bash gcc fm.c -o fm -lm```
 - Executing FM: ```bash ./fm fileName node delta density exp```
   - fileName: is the name of the input file along with the absolute or relative path.
   - nodes: the number of vertices $n$, in left or right partition of the given graph.
-  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
+  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2$) in the given graph.
   - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
 
 ### Running multiple experiments
@@ -93,9 +93,9 @@ Following Bash scripts allows to run multiple experiments with Seq-RCP, Par-RCP,
   - run the script with ```bash randomCPGCbatch.sh``` command
   - when this program termintaes it creates following files:
     - **parCPGC_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the parallel program.
-    - compressed graphs from the parallel programs are stored in the **compressedGraph** directory in the git repository directory and are named with respective instance of the given graph, for example "compressed_graph_32_80_1_0.9.mtx".
+    - compressed graphs from the parallel programs are stored in the **compressedGraph** directory in this git repository directory and are named with respective instance of the given graph, for example ***compressed_graph_32_80_1_0.9.mtx***.
     - **seqCPGC_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the sequential program.
-    - compressed graphs from the sequentaial programs are stored in the git repository directory and are named with respective instance of the given graph, for example "S_compressed_graph_32_80_1.mtx".
+    - compressed graphs from the sequentaial programs are stored in the git repository directory and are named with respective instance of the given graph, for example ***S_compressed_graph_32_80_1.mtx***.
    
 - Running multiple experiments with FM:
   - use the bash script "fmbatchScript.sh"
@@ -103,13 +103,23 @@ Following Bash scripts allows to run multiple experiments with Seq-RCP, Par-RCP,
   - run the script with ```bash fmbatchScript.sh``` command
   - when this program termintaes it creates following files:
     - **fm_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the parallel program.
-    - compressed graphs from the parallel programs are stored in the **fm_compressed_graphs** directory in the git repository directory and are named with respective instance of the given graph, for example "tripartite_graph_32_80_1_90.mtx".
+    - compressed graphs from the parallel programs are stored in the **fm_compressed_graphs** directory in this git repository directory and are named with respective instance of the given graph, for example ***tripartite_graph_32_80_1_90.mtx***.
 
 ### Results
 The obtained compression ratio and the running time of the C programs for Seq-RCP, Par-RCP, and FM are stored in ".csv" files named "seqCPGC_results.csv", "parCPGC_results.csv", and "fm_results.csv", respectively.
 
 
-## Generating Plots with the results
+## Generating plots with the results
+We use Jupyter Notebook to generate plots for the paper. Following instrustions provide Jupyter Notebook installation procedure and how to generate the plots:
+- installing Jupyter Notebook 
+```bash
+sudo apt-get update
+sudo apt-get install python3
+sudo apt-get install python3-pip
+pip3 install notebook
+```
+
+
 
 
 
