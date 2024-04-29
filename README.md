@@ -37,16 +37,17 @@ Instructions to run the script on a graph and obtain compression.
 The artifact is tested on Linux systems with Ubuntu 20 or higher. For successfully running the programs, the machine would need a GCC compiler with version 9.4.0 or higher and an MPICC compiler with version 4.0 or higher.
 
 #### Installing GCC compiler:
-
-```bash
-sudo apt update
-sudo apt install build-essential
-```
+- ```bash
+  sudo apt update
+  sudo apt install build-essential
+  ```
+- For detailed installation procedure see [How to Install GCC Compiler on Ubuntu?](https://phoenixnap.com/kb/install-gcc-ubuntu)
 
 #### Installing OpenMPI:
-```bash
-sudo apt-get install openmpi-bin openmpi-doc libopenmpi-dev
-```
+- ```bash
+  sudo apt-get install openmpi-bin openmpi-doc libopenmpi-dev
+  ```
+- For detailed installation procedure see [Installing OpenMPI]([https://phoenixnap.com/kb/install-gcc-ubuntu](https://webpages.charlotte.edu/abw/coit-grid01.uncc.edu/ParallelProgSoftware/Software/OpenMPIInstall.pdf))
 
 ### Generating Datasets:
 A bipartite graph $G(U, W, E)$ can be generated using the Python script simpleGraphGenerator.py with three arguments in the following order:
@@ -119,8 +120,17 @@ We use Jupyter Notebook to generate plots for the paper. Following instrustions 
     - ```bash export PATH="${PATH}:/home/cpgc/.local/bin"  ```, replace "/home/cpgc/.local/bin" with the path where Jupyter Notebook is installed.
     - ```bash source ~/.bashrc```
   - For detailed installation procedure see [Jupyter Notebook Installation Procedure](https://saturncloud.io/blog/how-to-install-jupyter-notebook-in-ubuntu/)
-- generating results
-  -
+- The jupyter notebook files have command for installing the required packages for generating the plots. Incase the package installation is unsucessful then follow the following procedure to install respective package:
+  - **Pandas installation:**
+    - ```bash pip install pandas```
+    - For detailed installation procedure see [Link](https://pandas.pydata.org/docs/getting_started/install.html)
+  - **Numpy installation:**
+    - ```bash pip install numpy```
+    - For detailed installation procedure see [Link]([https://pandas.pydata.org/docs/getting_started/install.html](https://numpy.org/install/))
+- to generate results
+  - open Jupyter Notebook by running this command in the terminal ```bash jupyter notebook```.
+  - go to "parallelRandomCPGC-main" directory
+  - 
 
 
 
