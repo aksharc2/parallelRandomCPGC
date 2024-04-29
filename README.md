@@ -73,7 +73,7 @@ python3 simpleGraphGenerator.py nodes density experimentNo
   - nodes: the number of vertices $n$, in left or right partition of the given graph.
   - delta: it is constant factor $\delta$, i.e. $0 < \delta < 1$.
   - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
-  - exp: it is an identifier of the generated graph with same nodes $n$ and density $\rho$.
+  - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
 
 - Compiling Par-RCP: ```bash mpicc randomCPGC.c -o randomCPGC -lm ```
 - Executing Par-RCP: ```bash mpirun -np nproc ./randomCPGC fileName node delta density exp ```
@@ -81,10 +81,18 @@ python3 simpleGraphGenerator.py nodes density experimentNo
   - fileName: is the name of the input file along with the absolute or relative path.
   - nodes: the number of vertices $n$, in left or right partition of the given graph.
   - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
-  - experimentNo: it is an identifier of the generated graph with same nodes $n$ and density $\rho$.
+  - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
 
+- Compiling FM: ```bash gcc fm.c -o fm -lm```
+- Executing FM: ```bash ./fm fileName node delta density exp```
+  - fileName: is the name of the input file along with the absolute or relative path.
+  - nodes: the number of vertices $n$, in left or right partition of the given graph.
+  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
+  - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
+  
 
-
+### Results
+The obtained compression ratio and the running time of the C programs for Seq-RCP, Par-RCP, and FM are stored in ".csv" files named "seqCPGC_results.csv", "parCPGC_results.csv", and "fm_results.csv", respectively.
 
 
 
