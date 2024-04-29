@@ -47,7 +47,7 @@ The artifact is tested on Linux systems with Ubuntu 20 or higher. For successful
 - ```bash
   sudo apt-get install openmpi-bin openmpi-doc libopenmpi-dev
   ```
-- For detailed installation procedure see [Installing OpenMPI](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://webpages.charlotte.edu/abw/coit-grid01.uncc.edu/ParallelProgSoftware/Software/OpenMPIInstall.pdf)
+- For detailed installation procedure see [Installing OpenMPI](https://webpages.charlotte.edu/abw/coit-grid01.uncc.edu/ParallelProgSoftware/Software/OpenMPIInstall.pdf)
 
 ### Generating Datasets:
 A bipartite graph $G(U, W, E)$ can be generated using the Python script simpleGraphGenerator.py with three arguments in the following order:
