@@ -133,11 +133,16 @@ We use Jupyter Notebook to generate plots for the paper. Following instrustions 
   - **Statistics installation:**
     - ```bash pip install statistics```
     - For detailed installation procedure see [Link](https://pypi.org/project/statistics/)
-- to generate results
-  - open Jupyter Notebook by running this command in the terminal ```bash jupyter notebook```.
-  - go to "parallelRandomCPGC-main" directory
-  - 
-
+  - **Math installation:**
+    - ```bash pip install python-math```
+    - For detailed installation procedure see [Link](https://pypi.org/project/python-math/)
+- To generate results
+  - open Jupyter Notebook by running this command in the terminal ```bash jupyter notebook``` which will open a web browser for Jupyter Notebook with /home directory.
+  - On the opened web page with /home directory go to "parallelRandomCPGC-main" (or the directory when this git repo is saved/loaded) directory. If results are generated and stored in the respective files and location mentioned above, then the following _.ipynb_ files execution should present the result plots.
+  - To generate result plots for Par-RCP open _Par_RCPGC_plots.ipynb_ file and run all cells.
+  - To generate results comparing the baseline FM open _comparison_with_fm.ipynb_ file and run all cells.
+  - The _get_k_hat.ipynb_ plots the $\hat{k}$ comparision of our approach with FM for given nodes $n$, edges $m$, density $\rho$, and $\delta$.
+    - The function **get_k()** provides a starting value of $\hat{k}$.
 
 
 
