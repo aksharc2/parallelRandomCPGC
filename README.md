@@ -126,7 +126,7 @@ We use Jupyter Notebook to generate plots for the paper. Following instrustions 
     - For detailed installation procedure see [Link](https://pandas.pydata.org/docs/getting_started/install.html)
   - **Numpy installation:**
     - ```bash pip install numpy```
-    - For detailed installation procedure see [Link]([https://pandas.pydata.org/docs/getting_started/install.html](https://numpy.org/install/))
+    - For detailed installation procedure see [Link](https://numpy.org/install/)
 - to generate results
   - open Jupyter Notebook by running this command in the terminal ```bash jupyter notebook```.
   - go to "parallelRandomCPGC-main" directory
