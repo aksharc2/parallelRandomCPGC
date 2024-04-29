@@ -69,11 +69,19 @@ python3 simpleGraphGenerator.py nodes density experimentNo
 ### Compiling and executing Seq-RCP, Par-RCP, and FM C programs Compiling Seq-RCP:
 - Compiling Seq-RCP: ```bash gcc sequential_randomCPGC.c -o sequentialRCPGC -lm ```
 - Executing Seq-RCP: ```bash ./sequentialRCPGC fileName node delta density exp ```
-- - nodes: the number of vertices $n$, in left or right partition of the given graph.
+  - fileName: is the name of the input file along with the absolute or relative path.
+  - nodes: the number of vertices $n$, in left or right partition of the given graph.
+  - delta: it is constant factor $\delta$, i.e. $0 < \delta < 1$.
+  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
+  - exp: it is an identifier of the generated graph with same nodes $n$ and density $\rho$.
+
+- Compiling Par-RCP: ```bash mpicc randomCPGC.c -o randomCPGC -lm ```
+- Executing Par-RCP: ```bash mpirun -np nproc ./randomCPGC fileName node delta density exp ```
+  - nproc: number of processors to use for running the program.
+  - fileName: is the name of the input file along with the absolute or relative path.
+  - nodes: the number of vertices $n$, in left or right partition of the given graph.
   - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
   - experimentNo: it is an identifier of the generated graph with same nodes $n$ and density $\rho$.
-
-
 
 
 
