@@ -127,6 +127,12 @@ We use Jupyter Notebook to generate plots for the paper. Following instrustions 
   - **Numpy installation:**
     - ```bash pip install numpy```
     - For detailed installation procedure see [Link](https://numpy.org/install/)
+  - **Matplotlib installation:**
+    - ```bash pip install matplotlib```
+    - For detailed installation procedure see [Link](https://pypi.org/project/matplotlib/)
+  - **Statistics installation:**
+    - ```bash pip install statistics```
+    - For detailed installation procedure see [Link](https://pypi.org/project/statistics/)
 - to generate results
   - open Jupyter Notebook by running this command in the terminal ```bash jupyter notebook```.
   - go to "parallelRandomCPGC-main" directory
