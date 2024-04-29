@@ -19,9 +19,9 @@ Instructions to run the script on a graph and obtain compression.
 
 1. **Prerequisite packages and libraries required**
   - for c program
-    - gcc version 9.x and above (the program is tested with gcc versions 11.4,  13.2)
+    - gcc version 9.x and above
     - OpenMPI version 4.0
-  - for running python script
+  - for running python script (used for generating plots for the paper)
     - Numpy
     - Matplotlib.pyplot
     - Pandas
@@ -83,13 +83,33 @@ python3 simpleGraphGenerator.py nodes density experimentNo
   - nodes: the number of vertices $n$, in left or right partition of the given graph.
   - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
   - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
-  
+
+### Running multiple experiments
+Following Bash scripts allows to run multiple experiments with Seq-RCP, Par-RCP, and FM and saves the results in csv files.
+
+- Running multiple experiments with Seq-RCP and Par-RCP:
+  - use the bash script "randomCPGCbatch.sh"
+  - update the for loops for experimentno, nodes, density, delta and number of processors to use (only for running Par-RCP) as shown in the image below.
+  - run the script with ```bash randomCPGCbatch.sh``` command
+  - when this program termintaes it creates following files:
+    - **parCPGC_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the parallel program.
+    - compressed graphs from the parallel programs are stored in the **compressedGraph** directory in the git repository directory and are named with respective instance of the given graph, for example "compressed_graph_32_80_1_0.9.mtx".
+    - **seqCPGC_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the sequential program.
+    - compressed graphs from the sequentaial programs are stored in the git repository directory and are named with respective instance of the given graph, for example "S_compressed_graph_32_80_1.mtx".
+   
+- Running multiple experiments with FM:
+  - use the bash script "fmbatchScript.sh"
+  - update the for loops for experimentno, nodes, density, delta and number of processors to use (only for running Par-RCP) as shown in the image below.
+  - run the script with ```bash fmbatchScript.sh``` command
+  - when this program termintaes it creates following files:
+    - **fm_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the parallel program.
+    - compressed graphs from the parallel programs are stored in the **fm_compressed_graphs** directory in the git repository directory and are named with respective instance of the given graph, for example "tripartite_graph_32_80_1_90.mtx".
 
 ### Results
 The obtained compression ratio and the running time of the C programs for Seq-RCP, Par-RCP, and FM are stored in ".csv" files named "seqCPGC_results.csv", "parCPGC_results.csv", and "fm_results.csv", respectively.
 
 
-
+## Generating Plots with the results
 
 
 
