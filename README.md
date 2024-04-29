@@ -18,6 +18,7 @@ Following are the programs in this repository:
 Instructions to run the script on a graph and obtain compression.
 
 1. **Prerequisite packages and libraries required**
+  - Tested with Ubuntu 20.04 and above versions
   - for c program
     - gcc version 9.x and above
     - OpenMPI version 4.0
@@ -28,10 +29,6 @@ Instructions to run the script on a graph and obtain compression.
     - Statistics
     - Math
      
-
-
-
-
 
 ## Implementation and Experiments
 
