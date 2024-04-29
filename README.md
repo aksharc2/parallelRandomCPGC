@@ -50,3 +50,48 @@ The artifact is tested on Linux systems with Ubuntu 20 or higher. For successful
 ```bash
 sudo apt update
 sudo apt install build-essential
+```
+
+#### Installing OpenMPI:
+```bash
+sudo apt-get install openmpi-bin openmpi-doc libopenmpi-dev
+```
+
+### Generating Datasets:
+A bipartite graph $G(U, W, E)$ can be generated using the Python script simpleGraphGenerator.py with three arguments in the following order:
+- nodes: the number of vertices $n$, in left or right partition of the given graph.
+- density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2) in the given graph.
+- experimentNo: it is an identifier of the generated graph with same nodes $n$ and density $\rho$.
+```bash
+python3 simpleGraphGenerator.py nodes density experimentNo
+```
+
+### Compiling and executing Seq-RCP, Par-RCP, and FM C programs Compiling Seq-RCP:
+- Compiling Seq-RCP: ```bash gcc sequential_randomCPGC.c -o sequentialRCPGC -lm ```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
