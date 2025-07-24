@@ -1,13 +1,13 @@
-# Paralle Randomized Clique Partition based Graph Compression (Par-CPGC)
+# Parallel Randomized Clique Partitioning-Based Algorithm for Graph Restructuring (Par-CPGC)
 
 ## Abstract
 
-This artifact aims to reproduce the experimental results presented in our paper, which proposes a new randomized parallel algorithm Par-RCP for graph compression based on partitioning the graph into bipartite cliques. We first design a randomized sequential algorithm Seq-RCP for graph compression based on clique partitioning and then use it as a base for the design of our parallel randomized algorithm Par-RCP. The algorithms extract δ-cliques C_q(U_q, W_q) from the bipartite graph G(U,W,E) and replace each of them with a tree formed by adding vertex z_q corresponding to the δ-clique C_q and connecting it to all the vertices in the two bipartitions of the clique. A δ-clique C_q in G is a complete bipartite subgraph with the left partition U_q of size ⌈n^(1-δ)⌉ and the right partition W_q of size k(n, m, δ) = ⌊δ log(n) / log(2n^2/m)⌋, where δ is a constant such that 0 ≤ δ ≤ 1, and m is the number of edges in G. Extensive performance evaluation on  large-scale graphs with billions of edges shows that \textsf{Par-RCP} reduces the edge count by up to 6.69$\times$ and achieves a speedup of up to 29.25. Applying the restructured graph further improves algorithmic performance, with Dinitz's algorithm achieving up to 2.06 speedup and All-Pairs Shortest Paths up to 213.34 relative to the case of using the original input graph as input. These results highlight the scalability and practical utility of our approach for large-scale graph analytics.
+This artifact aims to reproduce the experimental results presented in our paper, which proposes a new randomized parallel algorithm Par-RCP for graph restructuring based on partitioning the graph into bipartite cliques. We first design a randomized sequential algorithm Seq-RCP for graph restructuring based on clique partitioning and then use it as a base for the design of our parallel randomized algorithm Par-RCP. The algorithms extract δ-cliques C_q(U_q, W_q) from the bipartite graph G(U,W,E) and replace each of them with a tree formed by adding vertex z_q corresponding to the δ-clique C_q and connecting it to all the vertices in the two bipartitions of the clique. A δ-clique C_q in G is a complete bipartite subgraph with the left partition U_q of size ⌈n^(1-δ)⌉ and the right partition W_q of size k(n, m, δ) = ⌊δ log(n) / log(2n^2/m)⌋, where δ is a constant such that 0 ≤ δ ≤ 1, and m is the number of edges in G. Extensive performance evaluation on  large-scale graphs with billions of edges shows that \textsf{Par-RCP} reduces the edge count by up to 6.69$\times$ and achieves a speedup of up to 29.25. Applying the restructured graph further improves algorithmic performance, with Dinitz's algorithm achieving up to 2.06 speedup and All-Pairs Shortest Paths up to 213.34 relative to the case of using the original input graph as input. These results highlight the scalability and practical utility of our approach for large-scale graph analytics.
 
 
 ## Introduction
-The project aims to compress a given bipartiate graph by extracting cliqies. Doing so the compressed graph maintains the path infomation i.e., the connectivity of the vertices in the graph. This approach fall into lossless compression techniques. The compressed graph can be used as an input graph for other graph based algorithms such as matching, all pairs shortes path, etc. 
-This git repository aim to provide the c scripts to obtain compression. It also has a python script for generating sample bipartite graphs.
+The project aims to restructure a given bipartiate graph by extracting bipartite cliqies and replacing them with tripartite structure. Doing so the restructured graph maintains the path infomation i.e., the connectivity of the vertices in the graph. This approach fall into lossless restructuring techniques. The restructured graph can be used as an input graph for other graph based algorithms such as matching, all pairs shortes path, etc. 
+This git repository aim to provide the c scripts to obtain the restrectured graph. It also has a python script for generating sample bipartite graphs.
 
 Following are the programs in this repository:
 1. randomCPGC.c (Our approach)
@@ -16,7 +16,7 @@ Following are the programs in this repository:
 
 
 ## Procedure to run the scripts
-Instructions to run the script on a graph and obtain compression.
+Instructions to run the script on a given original graph and obtain the restrectured graph.
 
 1. **Prerequisite packages and libraries required**
   - Tested with Ubuntu 20.04 and above versions
@@ -107,21 +107,21 @@ Following Bash scripts allows to run multiple experiments with Seq-RCP, Par-RCP,
   - update the for loops for experimentno, nodes, density, delta and number of processors to use (only for running Par-RCP) as shown in the image below.
   - run the script with ```bash randomCPGCbatch.sh``` command
   - when this program termintaes it creates following files:
-    - **parCPGC_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the parallel program.
-    - compressed graphs from the parallel programs are stored in the **compressedGraph** directory in this git repository directory and are named with respective instance of the given graph, for example ***compressed_graph_32_80_1_0.9.mtx***.
-    - **seqCPGC_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the sequential program.
-    - compressed graphs from the sequentaial programs are stored in the git repository directory and are named with respective instance of the given graph, for example ***S_compressed_graph_32_80_1.mtx***.
+    - **parCPGC_results.csv** which has the execution time and the restructured graph obtained for particular instance of the experiments from the parallel program.
+    - restructured graphs from the parallel programs are stored in the restrecturedGraph directory in this git repository directory and are named with respective instance of the given graph, for example ***restructured_graph_32_80_1_0.9.mtx***.
+    - **seqCPGC_results.csv** which has the execution time and the restructured graph obtained for particular instance of the experiments from the sequential program.
+    - restructured graphs from the sequentaial programs are stored in the git repository directory and are named with respective instance of the given graph, for example ***S_restrectured_graph_32_80_1.mtx***.
    
 - Running multiple experiments with FM:
   - use the bash script "fmbatchScript.sh"
   - update the for loops for experimentno, nodes, density, delta and number of processors to use (only for running Par-RCP) as shown in the image below.
   - run the script with ```bash fmbatchScript.sh``` command
   - when this program termintaes it creates following files:
-    - **fm_results.csv** which has the execution time and the compression obtained for particular instance of the experiments from the parallel program.
-    - compressed graphs from the parallel programs are stored in the **fm_compressed_graphs** directory in this git repository directory and are named with respective instance of the given graph, for example ***tripartite_graph_32_80_1_90.mtx***.
+    - **fm_results.csv** which has the execution time and the restructured graph obtained for particular instance of the experiments from the parallel program.
+    - restructured graphs from the parallel programs are stored in the **fm_restructured_graphs** directory in this git repository directory and are named with respective instance of the given graph, for example ***tripartite_graph_32_80_1_90.mtx***.
 
 ### Results
-The obtained compression ratio and the running time of the C programs for Seq-RCP, Par-RCP, and FM are stored in ".csv" files named "seqCPGC_results.csv", "parCPGC_results.csv", and "fm_results.csv", respectively.
+The obtained edge reduction ratio and the running time of the C programs for Seq-RCP, Par-RCP, and FM are stored in ".csv" files named "seqCPGC_results.csv", "parCPGC_results.csv", and "fm_results.csv", respectively.
 
 
 ## Generating plots with the results
