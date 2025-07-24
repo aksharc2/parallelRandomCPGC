@@ -1,13 +1,13 @@
 /*On windows follow this instruction to get a running time:
-  1.clock_t start = clock();
-  2.clock_t stop = clock();
-  3.elapsed = ((double)(stop - start)) / CLOCKS_PER_SEC * 1000.0;
+Â Â 1.clock_t start = clock();
+Â Â 2.clock_t stop = clock();
+Â Â 3.elapsed = ((double)(stop - start)) / CLOCKS_PER_SEC * 1000.0;
  */
 
  /*On Grid follow this instruction to get a running time:
    0.struct timespec begin, end;
    1.clock_gettime(CLOCK_REALTIME, &begin);
-   2.clock_gettime(CLOCK_REALTIME, &end);         
+   2.clock_gettime(CLOCK_REALTIME, &end);    Â Â Â Â Â 
    3.long seconds = end.tv_sec - begin.tv_sec;
    4.long nanoseconds = end.tv_nsec - begin.tv_nsec;
    5.elapsed = (seconds + nanoseconds * 1e-9) * 1000;
@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
 	char tempName[100];
 	char compressedFileName[100];
 	sprintf(tempName, "S_temp_%d_%d_%d.mtx", graphNodes, density, instance);
-	sprintf(compressedFileName, "S_compressed_graph_%d_%d_%d.mtx", graphNodes, density, instance);
+	sprintf(compressedFileName, "S_restrectured_graph_%d_%d_%d.mtx", graphNodes, density, instance);
 	char filePath[256]; // Adjust the size as needed
 	// snprintf(filePath, sizeof(filePath), "%s/%s", "sequentialCompressedGraphs", tempName);
     compressedFile = fopen(tempName, "w");
@@ -226,10 +226,10 @@ int main(int argc, char* argv[]) {
     RandomizedAlgorithm();
 	FILE * compFile = fopen(compressedFileName, "w");
 	fclose(compressedFile);
-    float compression_ratio = compressionRatio();
+    float edge_reduction_ratio = compressionRatio();
     //printf("\nCompression Ratio: %f", r);
 	fprintf(compFile, "%%MatrixMarket matrix coordinate pattern general\n");
-	fprintf(compFile, "%% Resulted compressed graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
+	fprintf(compFile, "%% Resulted restructured graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
 	fprintf(compFile, "%d %d %d\n", graphNodes, graphNodes, m_hat + cliqueEdges);
 	for(int i = 0; i < graphNodes; i++){
 		for(int j = 0; j < graphNodes; j++){
@@ -248,7 +248,7 @@ int main(int argc, char* argv[]) {
     long nanoseconds = end.tv_nsec - begin.tv_nsec;
     double totalElapsed = (seconds + nanoseconds * 1e-9) * 1000;
 	remove(tempName); 
-    printf("%d,%d,%d, %.2f, %lf, %lf, %lf, %lf\n", graphNodes, density, instance, delta, compression_ratio, totalElapsed/1000, elapsed_read/1000, elapsed_write/1000);
+    printf("%d,%d,%d, %.2f, %lf, %lf, %lf, %lf\n", graphNodes, density, instance, delta, edge_reduction_ratio, totalElapsed/1000, elapsed_read/1000, elapsed_write/1000);
 
     return 0;
 }
