@@ -1,6 +1,12 @@
 import random
 import sys
+import os
 
+def create_directory(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        print(f"Directory '{directory}' created successfully.")
+        
 def save_to_mtx_file(nodes, p, file_name):
     rows = cols = nodes
     edges = 0
@@ -55,7 +61,9 @@ if __name__ == '__main__':
         nodes = int(sys.argv[1])
         p = int(sys.argv[2])
         exp= int(sys.argv[3])
-        file_name = f'bipartite_graph_{nodes}_{p}_{exp}.mtx'
+        dataset_folder = 'datasets'
+        create_directory(dataset_folder)
+        file_name = f'{dataset_folder}/bipartite_graph_{nodes}_{p}_{exp}.mtx'
         edges = save_to_mtx_file(nodes, p, file_name)
         line_number = 2
         new_line = f'{nodes} {nodes} {edges}'
