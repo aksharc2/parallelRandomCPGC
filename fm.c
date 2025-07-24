@@ -31,12 +31,12 @@ Clique Stripping algorithm (CSA) in Feder and Motwani's paper*/
 #define N 513
 
 FILE* k_hat_file_ptr;  // Stores k_hat values
-FILE* compression_ratio_ptr;	// Stores compression ratio
+FILE* edge_reduction_ratio_ptr;	// Stores edge reduction ratio
 FILE* time_elapsed_ptr;		// Stores execution time
 FILE* file; // Stores the name of the .csv file to read
 FILE* results;	// Stores the results
 FILE* tempFile;   // temoporary fiwl to store clique edges
-FILE* saveFile;   // saved compressed graph edges
+FILE* saveFile;   // saved restructured graph edges
 
 
 int graph_nodes;
@@ -55,7 +55,7 @@ int U[2 * N][N + 1];	// Stores left partition of the delta-clique
 int K[2 * N][N + 1];	// Stores right partition of the delta-clique
 int	q;	// this is clique number
 int m_hat_fix = 0;	// Initial edges in the given graph
-float compression_ratio;
+float edge_reduction_ratio;
 char f_name[100];
 double execution_time;
 struct timespec begin, end;
@@ -165,16 +165,16 @@ void saveCliquesEdges(int k) {
 	}
 }
 
-// Saving the compressed graph in .mtx format
+// Saving the restructured graph in .mtx format
 void save_graph_to_mtx() {
 
 	// Write the header
 
 	fprintf(saveFile, "%%%%MatrixMarket matrix coordinate pattern general\n");
-	fprintf(saveFile, "%% Compressed graph edges\n");
+	fprintf(saveFile, "%% restructured graph edges\n");
 	fprintf(saveFile, "%% -------------------------------------------\n");
 	fprintf(saveFile, "%% Original Graph: %s\n", f_name);
-	fprintf(saveFile, "%% Graph_nodes:%d, compression_ratio:%f\n", graph_nodes, compression_ratio);
+	fprintf(saveFile, "%% Graph_nodes:%d, edge_reduction_ratio:%f\n", graph_nodes, edge_reduction_ratio);
 	fprintf(saveFile, "%% -------------------------------------------\n");
 	fprintf(saveFile, "%% leftPartitionSize, rightPartitionSize, middlePartitionSize, edges\n");
 	fprintf(saveFile, "%d %d %d %d\n", leftPartitionSize, cliqueIndex - graph_nodes, rightPartitionSize, num_edges);
@@ -673,7 +673,7 @@ void runCliqueStrippingAlgorithm() {
 	}
 }
 
-/* Functino to calculate the compression ratio */
+/* Functino to calculate the edge reduction ratio */
 void get_remaining_edges() {
 	int p, j, i;
 	int edges = 0; // Edges removed from the given graph
@@ -694,7 +694,7 @@ void get_remaining_edges() {
 	}
 	trivial = m_hat_fix - edges;
 	total_edges = num_edges + edge_in_clique;
-	compression_ratio = (float)m_hat_fix / (float)total_edges;
+	edge_reduction_ratio = (float)m_hat_fix / (float)total_edges;
 	
 }
 
@@ -739,7 +739,7 @@ int main(int argc, char* argv[]) {
 	tempFile = fopen("tempCliqueEdges.mtx", "w");
 	runCliquePartitioningAlgorithm();
 	fclose(tempFile);
-	printf("%d,%d,%d, %f, %lf, %lf\n", nodes, density, exp, delta, compression_ratio, execution_time);
+	printf("%d,%d,%d, %f, %lf, %lf\n", nodes, density, exp, delta, edge_reduction_ratio, execution_time);
 	save_graph_to_mtx();
 	fclose(saveFile);
 	return 0;
