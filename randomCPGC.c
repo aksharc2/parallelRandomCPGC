@@ -32,7 +32,7 @@ int get_k_hat(int graph_nodes, int m_hat, float delta) {
 
 int main(int argc, char* argv[]) {
 	const char* folderName = "temp"; // Specify the folder name
-	const char* compressedGraphFolderName = "compressedGraph"; // Specify the folder name
+	const char* compressedGraphFolderName = "restrecturedGraph"; // Specify the folder name
 	createFolder(folderName);
 	createFolder(compressedGraphFolderName);
     MPI_Init(&argc, &argv);
@@ -366,7 +366,7 @@ int main(int argc, char* argv[]) {
 			MPI_Recv(&edgesAddedToClique, 1, MPI_INT, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			TotalCliqueEdges += edgesAddedToClique;
 		}
-		//printf("Edges in the cliques: %d | Remaining/Trivial edges: %d | Edges in compressed graph: %d \n", TotalCliqueEdges, m_hat, TotalCliqueEdges + m_hat);
+		//printf("Edges in the cliques: %d | Remaining/Trivial edges: %d | Edges in restructured graph: %d \n", TotalCliqueEdges, m_hat, TotalCliqueEdges + m_hat);
 		free(send_buf);
 		free(edgesRemoved);
 		free(S);
@@ -485,7 +485,7 @@ int main(int argc, char* argv[]) {
 	// if (my_rank == 0){
 		// double end = MPI_Wtime();
 		// printf("Time elapsed during the job: %.2fs.\n", end - start);
-		// printf("Compression ratio: %f \n", (float) InitialEdges/(float) (TotalCliqueEdges + m_hat));
+		// printf("Edge Reduction ratio: %f \n", (float) InitialEdges/(float) (TotalCliqueEdges + m_hat));
 		// printf("%d, %.1f, %f, %.4f, %d\n", graphNodes, delta, (float) InitialEdges/(float) (TotalCliqueEdges + m_hat), end - start, comm_size);
 	// }
 
@@ -500,10 +500,10 @@ int main(int argc, char* argv[]) {
 		char f_name[100];
 		char compressedFileName[256];
 		char command[2400] = "cat "; // Adjust the size as needed
-		sprintf(compressedFileName, "%s/compressed_graph_%d_%d_%d_%.1f.mtx", compressedGraphFolderName, graphNodes, density, instance, delta);
+		sprintf(compressedFileName, "%s/restructured_graph_%d_%d_%d_%.1f.mtx", compressedGraphFolderName, graphNodes, density, instance, delta);
 		FILE* outputFile = fopen(compressedFileName, "w");
 		fprintf(outputFile, "%%MatrixMarket matrix coordinate pattern general\n");
-		fprintf(outputFile, "%% Resulted compressed graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
+		fprintf(outputFile, "%% Resulted restructured graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
 		fprintf(outputFile, "%d %d %d %d\n", graphNodes,  total_cliques-graphNodes, graphNodes, TotalCliqueEdges+m_hat);
 		fclose(outputFile);
 		// strcat(command, "cat ");
