@@ -82,6 +82,22 @@ python3 simpleGraphGenerator.py nodes density experimentNo
   - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2$) in the given graph.
   - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
 
+### Compiling and executing Dinitz and All-Pairs Shortest Path (APSP) algorithms:
+- Compiling Dinitz for bipartite graph: ```gcc dinics_bi.c -o dinitz_bi -lm ```
+- Compiling Dinitz for tripartite graph: ```gcc dinics_tri.c -o dinitz_tri -lm ```
+- Executing Dinitz for bipartite graph: ```./dinitz_bi node density exp delta ```
+- Executing Dinitz for tripartite graph: ```./dinitz_tri node density exp delta ```  ./c_apsp "$file" -d 1
+  - nodes: the number of vertices $n$, in left or right partition of the given graph.
+  - delta: it is constant factor $\delta$, i.e. $0 < \delta < 1$.
+  - density: density $\rho$, i.e. the ratio of number of edges in given graph over the maximum number of possible edges ($n^2$) in the given graph.
+  - exp: the instance of the generated graph with same nodes $n$ and density $\rho$.
+- Compiling APSP: ```gcc apsp_bsf_reconstructed_graph.c -lm -o apsp ```
+- Executing APSP: ```./apsp fileName -d 1 -c 1 ```
+  - fileName: is the name of the input file along with the absolute or relative path.
+  - directed (-d) option: use '1' for using directed graph as input and '0' for non-directed graph.
+  - restructured (-c) option: use '1' for using restructed graph as input and '0' for given original graph.
+ 
+    
 ### Running multiple experiments
 Following Bash scripts allows to run multiple experiments with Seq-RCP, Par-RCP, and FM and saves the results in csv files.
 
