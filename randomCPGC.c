@@ -22,6 +22,9 @@ void createFolder(const char* folderName) {
 int get_k_hat(int graph_nodes, int m_hat, float delta) {
 	int k_hat;
     float de = (2 * pow((double)graph_nodes, 2)) / m_hat;
+    if (de < 10){
+        de = 10;
+    }
     float nu = delta * log2((double)graph_nodes);
     k_hat = floor((double)nu / (log2((double)de)));
 	return k_hat;
@@ -39,14 +42,14 @@ int main(int argc, char* argv[]) {
 	saveCliqueTime = mergeFilesTime = 0.0;
     int comm_size;
     MPI_Comm_size(MPI_COMM_WORLD, &comm_size);
-    
+    float weight = 1.0; // default weight for unweighted graphs
 	const char* inputFilename = argv[1];
-	int graphNodes = atoi(argv[2]);
-	float delta = atof(argv[3]);
-	int density = atoi(argv[4]);
-	int instance = atoi(argv[5]);
+	
+	float delta = atof(argv[2]);
+	int density = 99; //atoi(argv[4]);
+	int instance = atoi(argv[3]);
     
-    int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
+  
     // Get my rank
     int my_rank;
     MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
@@ -55,10 +58,41 @@ int main(int argc, char* argv[]) {
 	int TotalCliqueEdges = 0;
 	int InitialEdges = 0;
 	int m_hat = 0;
+	int total_cliques;
     // Create the window for a 10x10 matrix
+
+    bool* adjMatrix_buffer;
+	
+	
+	int lp = 0, rp = 0, edges = 0;
+
+    // Rank 0 reads the file
+    if (my_rank == 0) {
+        FILE* inputFile = fopen(inputFilename, "r");
+        if (!inputFile) {
+            perror("Error opening file");
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+
+        char line[1024];
+        while (fgets(line, sizeof(line), inputFile)) {
+            if (line[0] == '%') continue;
+            if (sscanf(line, "%d %d %d", &lp, &rp, &edges) == 3) break;
+        }
+
+        fclose(inputFile);
+    }
+
+    // Broadcast lp, rp, and edges to all ranks
+    MPI_Bcast(&lp, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&rp, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    // MPI_Bcast(&edges, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+	int graphNodes = (lp > rp) ? lp : rp; // = atoi(argv[2])
+	int arraySize = (int) ceil((double)(graphNodes * graphNodes)/(double)comm_size);
     const int ROWS = graphNodes;
     const int COLS = graphNodes/comm_size;
-    bool* adjMatrix_buffer;
+
     MPI_Win adjMatrix_window;
     MPI_Win_allocate_shared(arraySize * sizeof(bool), sizeof(bool), MPI_INFO_NULL, MPI_COMM_WORLD, &adjMatrix_buffer, &adjMatrix_window);
 	MPI_Barrier(MPI_COMM_WORLD);
@@ -302,6 +336,7 @@ int main(int argc, char* argv[]) {
 						break;
 					}
 				}
+				
 				edgesRemoved[0] = edgeRemoved;
 				m_hat = m_hat - edgesRemoved[0];
 				// printf("p %d edges removed: %d\n", my_rank, edgesRemoved[0]);
@@ -317,6 +352,8 @@ int main(int argc, char* argv[]) {
 			//printf("k_hat: %d\n", k_hat);
 		}
 		//printf("Sending termination request\n");
+		printf("fnal Q:%d rank:%d\n", q - 1, my_rank);
+		total_cliques = q-1;
 		send_buf[0] = 1;
 		for ( int r = 1; r < comm_size; r++){
 			MPI_Send(send_buf, sendBufferSize, MPI_INT, r, 0, MPI_COMM_WORLD); // , &request			 , &sRequest		
@@ -369,6 +406,7 @@ int main(int argc, char* argv[]) {
 			MPI_Recv(recv_buf, recvBufferSize, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			int k_hat = recv_buf[0];
 			int Q = recv_buf[1];
+			// printf("Q:%d rank:%d\n", Q, my_rank);
 			if (k_hat < 2)
 				break;
 			//printf("Receiving Processor %d waiting Line 255 with %d k_hat (", my_rank, k_hat);	
@@ -430,6 +468,8 @@ int main(int argc, char* argv[]) {
 		saveCliqueTime += (MPI_Wtime() - saveCliqueStart);
 		MPI_Gather(&saveCliqueTime, 1, MPI_DOUBLE, NULL, 0, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 		free(recv_buf);
+		
+
 	}
 	
 	
@@ -455,6 +495,7 @@ int main(int argc, char* argv[]) {
 	
 	
 	if (my_rank == 0){
+		// printf("total cliques:%d rank:%d\n", total_cliques-graphNodes, my_rank);
 		mergeFilesStart = MPI_Wtime();
 		char f_name[100];
 		char compressedFileName[256];
@@ -463,10 +504,10 @@ int main(int argc, char* argv[]) {
 		FILE* outputFile = fopen(compressedFileName, "w");
 		fprintf(outputFile, "%%MatrixMarket matrix coordinate pattern general\n");
 		fprintf(outputFile, "%% Resulted compressed graph for given bipartite graph with %d nodes, %d density and %.1f delta.\n", graphNodes, density, delta);
-		fprintf(outputFile, "%d %d %d\n", graphNodes, graphNodes, TotalCliqueEdges + m_hat);
+		fprintf(outputFile, "%d %d %d %d\n", graphNodes,  total_cliques-graphNodes, graphNodes, TotalCliqueEdges+m_hat);
 		fclose(outputFile);
 		// strcat(command, "cat ");
-		// printf("%s \n", command);
+		
 		// snprintf(command, sizeof(command), "cat ", f_name, compressedFileName);
 		for(int p = 0; p < comm_size; p++){
 			sprintf(f_name, "%s/p_%d.mtx", folderName,p);

@@ -1,0 +1,51 @@
+#!/bin/bash
+# Job name
+#SBATCH --job-name parCPGC
+# Request one node
+#SBATCH -N 1
+# Request entire node - the job allocation can not share nodes with other running jobs
+#SBATCH -p RM
+# Total number of cores
+#SBATCH --ntasks-per-node=128
+# Mail when the job begins, ends, fails, requeues
+#SBATCH --mail-type=ALL
+# Where to send email alerts
+#SBATCH --mail-user=srabin
+# Create an output file that will be output_<jobid>.out
+#SBATCH -o output_%j.out
+# Create an error file that will be error_<jobid>.out
+#SBATCH -e errors_%j.err
+# Set maximum time limit
+#SBATCH -t 48:00:00
+# set min wall time
+#SBATCH --time-min=48:00:00
+
+#echo commands to stdout
+set -x
+
+
+module load openmpi/4.0.5-gcc10.2.0
+
+echo "graphNodes,density,expNo,delta,compressionRatio,executionTime,readTime,writeTime,mergeTime,cores" > parallelRandomizedCPGCResults.csv
+echo "graphNodes,density,expNo,delta,compressionRatio,executionTime,readTime,writeTime" > sequentialRandomizedCPGCResults.csv
+for exp in 1 2 3 4 5 6 7 8 9 10
+do
+        for node in 2048 4096 8192 16384 32768
+        do
+                for density in 80 85 90 95 98
+                do
+                        for run in 1 2 3 4 5
+                        do
+                                for delta in 0.5 0.6 0.7 0.8 0.9 1
+                                do
+                                        fileName="dataset1/bipartite_graph_${node}_${density}_${exp}.mtx"
+                                        ./sequentialRCPGC $fileName $node $delta $density  $exp >> sequentialRandomizedCPGCResults.csv
+                                        for proc in 8 16 24 32 40 48 56 64 72 80 88 96 104 112 120 128
+                                        do
+                                                mpirun -np $proc ./randomCPGC $fileName $node $delta $density  $exp >> parallelRandomizedCPGCResults.csv
+                                        done
+                                done
+                        done
+                done
+        done
+done
