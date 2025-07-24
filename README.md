@@ -1,4 +1,4 @@
-# Parallel Randomized Clique Partitioning-Based Algorithm for Graph Restructuring (Par-CPGC)
+# Parallel Randomized Clique Partitioning-Based Algorithm for Graph Restructuring (Par-CP)
 
 ## Abstract
 
